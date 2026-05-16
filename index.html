@@ -205,7 +205,8 @@
     .player-art-wrap{padding:22px 30px 16px;display:flex;justify-content:center;}
     .player-art{width:100%;max-width:300px;aspect-ratio:1/1;border-radius:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 24px 64px rgba(0,0,0,.32);overflow:hidden;}
     .player-art.pulse{animation:artpulse .5s ease;}
-    @keyframes artpulse{0%{transform:scale(1)}50%{transform:scale(1.025)}100%{transform:scale(1)}}
+    @keyframes artpulse{0%{transform:scale(1)}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}50%{transform:scale(1.025)}100%{transform:scale(1)}}
     .player-meta{padding:0 26px;display:flex;align-items:flex-start;justify-content:space-between;}
     .player-title{font-size:22px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:calc(100% - 48px);color:var(--text);}
     .player-artist{font-size:14px;color:var(--sub);margin-top:4px;}
@@ -239,7 +240,10 @@
     .lrc-editor-wrap{padding:0 18px 18px;}
     .lrc-textarea{width:100%;min-height:220px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-size:12px;font-family:monospace;padding:12px;resize:vertical;outline:none;line-height:1.7;box-sizing:border-box;}
     .lrc-help{font-size:11px;color:var(--sub);line-height:1.6;margin-top:8px;}
-    .lrc-save-btn{width:100%;margin-top:14px;background:var(--acc);border:none;border-radius:14px;padding:13px;color:#fff;font-size:15px;font-weight:700;}    .vol-sp{width:10px;}
+    .lrc-save-btn{width:100%;margin-top:14px;background:var(--acc);border:none;border-radius:14px;padding:13px;color:#fff;font-size:15px;font-weight:700;}
+    .lrc-auto-btn{width:100%;margin-top:10px;background:linear-gradient(135deg,#7c3aed,#4f46e5);border:none;border-radius:14px;padding:13px;color:#fff;font-size:15px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;}
+    .lrc-auto-btn:disabled{opacity:.55;}
+    .lrc-status{font-size:12px;color:var(--acc);margin-top:8px;text-align:center;min-height:18px;}    .vol-sp{width:10px;}
     input[type=range]{-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:var(--card2);outline:none;flex:1;}
     input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--acc);}
 
@@ -837,10 +841,131 @@ function openLyricsEditor(){
   var t=cur!==null?tracks[cur]:null;
   if(!t){notify('Aucune chanson en cours');return;}
   var current=t.lrc||'';
-  showModal(`<div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">Paroles — ${esc(t.name)}</div><div class="lrc-editor-wrap"><textarea class="lrc-textarea" id="lrc-ta" placeholder="[00:12.50] Première ligne\n[00:15.30] Deuxième ligne\n[01:02.00] Refrain...">${esc(current)}</textarea><p class="lrc-help">Format LRC : chaque ligne commence par <b>[mm:ss.xx]</b> suivi du texte.<br>Tu peux trouver des fichiers .lrc sur internet et les coller ici.</p><button class="lrc-save-btn" onclick="saveLyrics('${t.id}')">Enregistrer</button></div></div>`);
+  showModal(`<div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">Paroles — ${esc(t.name)}</div><div class="lrc-editor-wrap"><textarea class="lrc-textarea" id="lrc-ta" placeholder="[00:12.50] Première ligne\n[00:15.30] Deuxième ligne\n[01:02.00] Refrain...">${esc(current)}</textarea><p class="lrc-help">Format LRC : chaque ligne commence par <b>[mm:ss.xx]</b> suivi du texte.</p><div class="lrc-status" id="lrc-status"></div><button class="lrc-auto-btn" id="lrc-auto-btn" onclick="autoFetchLyrics('${t.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Chercher les paroles automatiquement</button><button class="lrc-save-btn" onclick="saveLyrics('${t.id}')">Enregistrer</button></div></div>`);
 }
 
-function editLyricsForTrack(trackId){var t=tracks.find(x=>x.id===trackId);if(!t) return;var current=t.lrc||'';showModal(`<div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">Paroles — ${esc(t.name)}</div><div class="lrc-editor-wrap"><textarea class="lrc-textarea" id="lrc-ta" placeholder="[00:12.50] Première ligne\n[00:15.30] Deuxième ligne\n[01:02.00] Refrain...">${esc(current)}</textarea><p class="lrc-help">Format LRC : <b>[mm:ss.xx]</b> suivi du texte.<br>Cherche "<b>${esc(t.name)} lrc</b>" sur internet pour trouver les paroles.</p><button class="lrc-save-btn" onclick="saveLyrics('${t.id}')">Enregistrer</button></div></div>`);}
+function editLyricsForTrack(trackId){var t=tracks.find(x=>x.id===trackId);if(!t) return;var current=t.lrc||'';showModal(`<div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">Paroles — ${esc(t.name)}</div><div class="lrc-editor-wrap"><textarea class="lrc-textarea" id="lrc-ta" placeholder="[00:12.50] Première ligne\n[00:15.30] Deuxième ligne\n[01:02.00] Refrain...">${esc(current)}</textarea><p class="lrc-help">Format LRC : <b>[mm:ss.xx]</b> suivi du texte.</p><div class="lrc-status" id="lrc-status"></div><button class="lrc-auto-btn" id="lrc-auto-btn" onclick="autoFetchLyrics('${t.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Chercher les paroles automatiquement</button><button class="lrc-save-btn" onclick="saveLyrics('${t.id}')">Enregistrer</button></div></div>`);}
+
+
+/* ═══════════════════════════════════════════════════════
+   AUTO-FETCH PAROLES — Cherche et génère le LRC via IA + web
+   ═══════════════════════════════════════════════════════ */
+async function autoFetchLyrics(trackId){
+  var t=tracks.find(x=>x.id===trackId);
+  if(!t){notify('Chanson introuvable');return;}
+  var btn=document.getElementById('lrc-auto-btn');
+  var statusEl=document.getElementById('lrc-status');
+  if(!btn||!statusEl) return;
+
+  btn.disabled=true;
+  btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="white" style="animation:spin 1s linear infinite"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 14.03 20 13.07 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>Recherche en cours...';
+  var setStatus=function(msg,color){statusEl.style.color=color||'var(--acc)';statusEl.textContent=msg;};
+
+  try{
+    /* ── ÉTAPE 1 : LRCLIB (paroles synchronisées officielles) ── */
+    setStatus('🔍 Recherche sur LRCLIB...');
+    var trackEnc=encodeURIComponent(t.name);
+    var artistEnc=encodeURIComponent(t.artist||'');
+
+    // Essai 1 : recherche précise titre + artiste
+    var lrclibUrl='https://lrclib.net/api/search?track_name='+trackEnc+'&artist_name='+artistEnc;
+    var r1=await fetch(lrclibUrl,{headers:{'Lrclib-Client':'MeloApp/1.0 (https://melo-music.vercel.app)'}});
+    var found=null;
+
+    if(r1.ok){
+      var results=await r1.json();
+      // Cherche le premier résultat avec des paroles synchronisées
+      if(Array.isArray(results)){
+        found=results.find(function(x){return x.syncedLyrics && x.syncedLyrics.trim().length>10;});
+        // Fallback : premier résultat avec paroles non-synchronisées
+        if(!found) found=results.find(function(x){return x.plainLyrics && x.plainLyrics.trim().length>10;});
+      }
+    }
+
+    // Essai 2 : recherche par nom seul si pas trouvé
+    if(!found){
+      setStatus('🔍 Recherche élargie...');
+      var r2=await fetch('https://lrclib.net/api/search?q='+trackEnc+'+'+artistEnc,{
+        headers:{'Lrclib-Client':'MeloApp/1.0'}
+      });
+      if(r2.ok){
+        var res2=await r2.json();
+        if(Array.isArray(res2)){
+          found=res2.find(function(x){return x.syncedLyrics && x.syncedLyrics.trim().length>10;});
+          if(!found) found=res2.find(function(x){return x.plainLyrics && x.plainLyrics.trim().length>10;});
+        }
+      }
+    }
+
+    if(found && found.syncedLyrics){
+      // Paroles synchronisées trouvées — format LRC prêt à l'emploi !
+      var ta=document.getElementById('lrc-ta');
+      if(ta) ta.value=found.syncedLyrics.trim();
+      var nb=(found.syncedLyrics.match(/\[\d+:\d+/g)||[]).length;
+      setStatus('✓ Paroles synchronisées trouvées ('+nb+' lignes) ! Clique Enregistrer.','#22c55e');
+
+    } else if(found && found.plainLyrics){
+      // Paroles trouvées mais pas synchronisées → IA pour ajouter les timestamps
+      setStatus('⚡ Paroles trouvées, génération des timestamps...');
+      var lrcFromAI=await generateLrcWithAI(t.name, t.artist, found.plainLyrics);
+      var ta=document.getElementById('lrc-ta');
+      if(ta) ta.value=lrcFromAI;
+      var nb2=(lrcFromAI.match(/\[\d+:\d+/g)||[]).length;
+      setStatus('✓ '+nb2+' lignes avec timestamps générés ! Clique Enregistrer.','#22c55e');
+
+    } else {
+      /* ── ÉTAPE 2 : Fallback IA avec web search ── */
+      setStatus('⚡ Non trouvé sur LRCLIB, recherche avec IA...');
+      var lrcFromAI2=await generateLrcWithAI(t.name, t.artist, null);
+      var ta2=document.getElementById('lrc-ta');
+      if(ta2) ta2.value=lrcFromAI2;
+      var nb3=(lrcFromAI2.match(/\[\d+:\d+/g)||[]).length;
+      if(nb3>3){
+        setStatus('✓ '+nb3+' lignes générées par IA. Timestamps approximatifs.','#f59e0b');
+      } else {
+        setStatus('⚠️ Paroles introuvables pour cette chanson.','#ff4d4d');
+      }
+    }
+
+  } catch(err){
+    setStatus('✗ Erreur : '+err.message,'#ff4d4d');
+    console.error('autoFetchLyrics:',err);
+  } finally {
+    if(btn){
+      btn.disabled=false;
+      btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Chercher les paroles automatiquement';
+    }
+  }
+}
+
+async function generateLrcWithAI(trackName, artistName, plainLyrics){
+  var prompt;
+  if(plainLyrics){
+    prompt='Convertis ces paroles de la chanson "'+trackName+'" de '+artistName+' en format LRC synchronisé.\n'
+      +'Ajoute des timestamps [mm:ss.xx] réalistes pour chaque ligne.\n'
+      +'RÉPONDS UNIQUEMENT avec le LRC brut, aucun texte avant ou après.\n\n'
+      +'Paroles :\n'+plainLyrics;
+  } else {
+    prompt='Génère les paroles synchronisées LRC pour la chanson "'+trackName+'" de '+artistName+'.\n'
+      +'Utilise le web search pour trouver les paroles exactes.\n'
+      +'Format : [mm:ss.xx] texte de la ligne\n'
+      +'RÉPONDS UNIQUEMENT avec le LRC brut. Commence par [00:';
+  }
+  var body={model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]};
+  if(!plainLyrics) body.tools=[{type:'web_search_20250305',name:'web_search'}];
+  var res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!res.ok) throw new Error('API IA erreur '+res.status);
+  var data=await res.json();
+  var text='';
+  (data.content||[]).forEach(function(b){if(b.type==='text') text+=b.text;});
+  // Extrait uniquement les lignes LRC valides
+  var lrcLines=text.trim().split('\n').filter(function(l){return /^\[\d+:\d+/.test(l.trim());});
+  return lrcLines.join('\n');
+}
+
 
 function saveLyrics(trackId){
 
@@ -1192,7 +1317,11 @@ async function handleFilesForArtist(files, artistId){
     var uid=genId();
     var ext=(file.name.match(/\.[^.]+$/)||['.mp3'])[0].toLowerCase();
     var key='tracks/'+uid+ext;
-    var tname=file.name.replace(/\.[^.]+$/,'').replace(/[_\-]+/g,' ').trim();
+    var _raw=file.name.replace(/\.[^.]+$/,'').trim();
+    var tname=_raw;
+    var _si2=_raw.indexOf(' - ');
+    if(_si2>0){var _r2=_raw.slice(_si2+3).trim();if(_r2.length>0) tname=_r2;}
+    tname=tname.replace(/_+/g,' ').trim();
 
     subEl.textContent=(i+1)+' / '+af.length+' — '+tname;
 
@@ -1794,13 +1923,26 @@ function handleFiles(files){var af=Array.from(files).filter(f=>f.type.startsWith
 async function uploadFile(file){
   var id=genId(),ext=(file.name.match(/\.[^.]+$/)||['.mp3'])[0].toLowerCase();
   var key='tracks/'+id+ext;
-  // Nom de fallback = nom du fichier sans extension
-  var fallbackName=file.name.replace(/\.[^.]+$/,'').replace(/[_\-]+/g,' ').trim();
+  // ══ Parser intelligent du nom de fichier (format SpotiDown: "Artiste - Titre.mp3") ══
+  var rawName=file.name.replace(/\.[^.]+$/,'').trim();
+  var fallbackName=rawName, fallbackArtist='Artiste inconnu';
+  // Détecte le séparateur " - " (format SpotiDown et la plupart des MP3 téléchargés)
+  var sepIdx=rawName.indexOf(' - ');
+  if(sepIdx > 0){
+    var left=rawName.slice(0,sepIdx).trim();
+    var right=rawName.slice(sepIdx+3).trim();
+    if(left.length > 0 && left.length < 60 && right.length > 0){
+      fallbackArtist = left;
+      fallbackName   = right;
+    }
+  }
+  fallbackName   = fallbackName.replace(/_+/g,' ').trim();
+  fallbackArtist = fallbackArtist.replace(/_+/g,' ').trim();
 
   // ── Lecture des tags ID3 AVANT l'upload ──────────────────
   var tags = await readID3Tags(file);
   var name   = (tags.title  && tags.title.trim())  ? tags.title.trim()   : fallbackName;
-  var artist = (tags.artist && tags.artist.trim())  ? tags.artist.trim()  : 'Artiste inconnu';
+  var artist = (tags.artist && tags.artist.trim())  ? tags.artist.trim()  : fallbackArtist;
   // Garder l'artiste complet pour l'affichage mais aussi séparer pour attribution
   var album  = (tags.album  && tags.album.trim())   ? tags.album.trim()   : null;
   var cover  = tags.cover || null;  // Data URL base64 de la pochette
