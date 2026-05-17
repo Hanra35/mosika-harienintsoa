@@ -209,6 +209,20 @@ module.exports = async (req, res) => {
       return;
     }
 
+    if (action === 'stream') {
+      const key = req.query?.key;
+      if (!key) { res.status(400).json({ error: 'Paramètre key manquant' }); return; }
+      const dlUrl = `${a.downloadUrl}/file/${BUCKET}/${key.split('/').map(encodeURIComponent).join('/')}`;
+      const r = await fetch(dlUrl, { headers: { Authorization: a.authorizationToken } });
+      if (!r.ok) { res.status(r.status).json({ error: 'Fichier introuvable dans B2' }); return; }
+      const contentType = r.headers.get('content-type') || 'application/octet-stream';
+      const buf = Buffer.from(await r.arrayBuffer());
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.status(200).send(buf);
+      return;
+    }
+
     res.status(404).json({ error: 'Action inconnue' });
   } catch (e) {
     console.error('api error:', e.message);
