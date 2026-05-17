@@ -2,9 +2,6 @@
   "functions": {
     "api/api.js": {
       "maxDuration": 30
-    },
-    "api/stream.js": {
-      "maxDuration": 60
     }
   }
 }
