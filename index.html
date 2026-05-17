@@ -1895,17 +1895,28 @@ async function readID3Tags(file){
       if(!bytes || !bytes.length) return null;
       var enc = bytes[0]; // 0=Latin1, 1=UTF16 BOM, 2=UTF16BE, 3=UTF8
       var content = bytes.slice(1);
-      // Retire les null terminators
-      while(content.length && content[content.length-1]===0) content = content.slice(0,-1);
       try{
-        if(enc === 0) return new TextDecoder('iso-8859-1').decode(content);
+        if(enc === 0){
+          // Latin1 / ISO-8859-1 : null terminator = 1 octet
+          while(content.length && content[content.length-1]===0) content = content.slice(0,-1);
+          return new TextDecoder('iso-8859-1').decode(content);
+        }
         if(enc === 1){
-          // UTF-16 with BOM
+          // UTF-16 BOM : null terminator = 2 octets
+          while(content.length>=2 && content[content.length-1]===0 && content[content.length-2]===0)
+            content = content.slice(0,-2);
           if(content[0]===0xFF && content[1]===0xFE) return new TextDecoder('utf-16le').decode(content.slice(2));
           if(content[0]===0xFE && content[1]===0xFF) return new TextDecoder('utf-16be').decode(content.slice(2));
           return new TextDecoder('utf-16le').decode(content);
         }
-        if(enc === 2) return new TextDecoder('utf-16be').decode(content);
+        if(enc === 2){
+          // UTF-16BE : null terminator = 2 octets
+          while(content.length>=2 && content[content.length-1]===0 && content[content.length-2]===0)
+            content = content.slice(0,-2);
+          return new TextDecoder('utf-16be').decode(content);
+        }
+        // enc === 3 : UTF-8 : null terminator = 1 octet
+        while(content.length && content[content.length-1]===0) content = content.slice(0,-1);
         return new TextDecoder('utf-8').decode(content);
       }catch(e){ return new TextDecoder('iso-8859-1').decode(content); }
     }
