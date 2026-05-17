@@ -155,6 +155,52 @@ module.exports = async (req, res) => {
       });
       return;
     }
+if (action === 'lyrics') {
+      const { q_track, q_artist } = req.query;
+      if (!q_track || !q_artist) {
+        res.status(400).json({ error: 'Paramètres q_track et q_artist requis' });
+        return;
+      }
+
+      // Ton token personnel Musixmatch
+      const MXM_TOKEN = '2605cebe1ce741a292893ca977a106cdd39cbd5af82732947436';
+      
+      try {
+        // 1. Chercher l'ID de la chanson
+        const searchUrl = `https://apic-desktop.musixmatch.com/ws/1.1/track.search?format=json&q_track=${encodeURIComponent(q_track)}&q_artist=${encodeURIComponent(q_artist)}&user_token=${MXM_TOKEN}&app_id=web-desktop-app-v1.0`;
+        const searchRes = await fetch(searchUrl);
+        const searchData = await searchRes.json();
+        
+        const trackList = searchData.message?.body?.track_list || [];
+        if (trackList.length === 0) {
+          res.status(404).json({ error: 'Chanson introuvable sur Musixmatch' });
+          return;
+        }
+
+        const trackId = trackList[0].track.track_id;
+
+        // 2. Tenter de récupérer les paroles synchronisées (LRC)
+        const subUrl = `https://apic-desktop.musixmatch.com/ws/1.1/track.subtitle.get?format=json&track_id=${trackId}&user_token=${MXM_TOKEN}&app_id=web-desktop-app-v1.0`;
+        const subRes = await fetch(subUrl);
+        const subData = await subRes.json();
+
+        let lyricsText = '';
+        if (subData.message?.body?.subtitle?.subtitle_body) {
+          lyricsText = subData.message.body.subtitle.subtitle_body;
+        } else {
+          // 3. Fallback : Si pas de synchro, récupérer les paroles standards
+          const lyrUrl = `https://apic-desktop.musixmatch.com/ws/1.1/track.lyrics.get?format=json&track_id=${trackId}&user_token=${MXM_TOKEN}&app_id=web-desktop-app-v1.0`;
+          const lyrRes = await fetch(lyrUrl);
+          const lyrData = await lyrRes.json();
+          lyricsText = lyrData.message?.body?.lyrics?.lyrics_body || '';
+        }
+
+        res.status(200).json({ lyrics: lyricsText });
+      } catch (err) {
+        res.status(500).json({ error: 'Erreur Musixmatch : ' + err.message });
+      }
+      return;
+    }
 
     if (action === 'bucket-info') {
       let totalSize = 0, fileCount = 0, nextFileName = null;
