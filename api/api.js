@@ -134,6 +134,65 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   const action = req.query?.action;
 
+  // ==========================================
+  // ACTION : LYRICS (À METTRE TOUT EN HAUT)
+  // ==========================================
+  if (action === 'lyrics') {
+    const { q_track, q_artist } = req.query;
+    if (!q_track || !q_artist) {
+      res.status(400).json({ error: 'Paramètres q_track et q_artist manquants' });
+      return;
+    }
+
+    const MXM_TOKEN = '2605cebe1ce741a292893ca977a106cdd39cbd5af82732947436';
+    
+    try {
+      // Appel direct et unique à Musixmatch (macro.subtitles.get)
+      const mxmUrl = `https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get?format=json&app_id=web-desktop-app-v1.0&usertoken=${MXM_TOKEN}&q_track=${encodeURIComponent(q_track)}&q_artist=${encodeURIComponent(q_artist)}`;
+      
+      const response = await fetch(mxmUrl, {
+        headers: { 'Cookie': 'x-mxm-token-guid=' }
+      });
+      const data = await response.json();
+      
+      const macro = data.message?.body?.macro_calls;
+      if (!macro) {
+        res.status(404).json({ error: 'Chanson introuvable sur Musixmatch' });
+        return;
+      }
+
+      let lyricsText = '';
+      
+      // 1. Cherche les paroles synchronisées (LRC)
+      const subMsg = macro['track.subtitles.get']?.message;
+      if (subMsg?.header?.status_code === 200 && subMsg?.body?.subtitle_list?.length > 0) {
+        lyricsText = subMsg.body.subtitle_list[0].subtitle.subtitle_body;
+      } 
+      // 2. Sinon, cherche les paroles simples
+      else {
+        const lyrMsg = macro['track.lyrics.get']?.message;
+        if (lyrMsg?.header?.status_code === 200 && lyrMsg?.body?.lyrics?.lyrics_body) {
+          lyricsText = lyrMsg.body.lyrics.lyrics_body;
+        }
+      }
+
+      if (!lyricsText) {
+        res.status(404).json({ error: 'Pas de paroles disponibles' });
+        return;
+      }
+
+      res.status(200).json({ lyrics: lyricsText });
+    } catch (err) {
+      res.status(500).json({ error: 'Erreur Musixmatch : ' + err.message });
+    }
+    
+    // Le "return" est crucial ici pour ne pas exécuter Backblaze B2 ensuite
+    return;
+  }
+  // ==========================================
+
+  // --- LE RESTE DE TON CODE EXISTANT (Backblaze) ---
+  
   try {
     const a   = await b2Auth();
     const bid = await getBucketId(a);
