@@ -1060,7 +1060,7 @@ function gotoNav(name){
 }
 
 /* CACHE DISABLED - STREAMING ONLY */
-var rawUrl=key=>dlUrl+'/file/'+BUCKET+'/'+encodeURIComponent(key)+'?Authorization='+encodeURIComponent(dlToken);
+var rawUrl=key=>'/api/stream?key='+encodeURIComponent(key);
 
 async function saveMeta(){
   var ts=Date.now();
