@@ -685,84 +685,13 @@ var qDragItems=[];
 // Stubs vides pour compatibilité avec le reste du code
 var db = null;
 var cachedTrackIds = new Set();
-async function initCache(){
-  return new Promise((resolve) => {
-    var req = indexedDB.open('melo-cache', 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore('tracks');
-    req.onsuccess = e => {
-      db = e.target.result;
-      var tx = db.transaction('tracks', 'readonly');
-      var cur2 = tx.objectStore('tracks').openCursor();
-      cur2.onsuccess = ev => {
-        if(ev.target.result){ cachedTrackIds.add(ev.target.result.key); ev.target.result.continue(); }
-      };
-      tx.oncomplete = () => resolve();
-    };
-    req.onerror = () => resolve();
-  });
-}
-
-async function cacheTrack(id, blob){
-  if(!db) return;
-  try{
-    var tx = db.transaction('tracks', 'readwrite');
-    tx.objectStore('tracks').put(blob, id);
-    cachedTrackIds.add(id);
-    await new Promise(r => { tx.oncomplete = r; tx.onerror = r; });
-  }catch(e){ console.warn('cacheTrack error:', e); }
-}
-
-async function getCachedTrack(id){
-  if(!db || !cachedTrackIds.has(id)) return null;
-  return new Promise(resolve => {
-    var tx = db.transaction('tracks', 'readonly');
-    var req = tx.objectStore('tracks').get(id);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror  = () => resolve(null);
-  });
-}
-
-async function deleteCachedTrack(id){
-  cachedTrackIds.delete(id);
-  if(!db) return;
-  try{
-    var tx = db.transaction('tracks', 'readwrite');
-    tx.objectStore('tracks').delete(id);
-  }catch(e){}
-}
-
-async function clearAllCache(){
-  cachedTrackIds.clear();
-  if(!db) return;
-  var tx = db.transaction('tracks', 'readwrite');
-  tx.objectStore('tracks').clear();
-  notify('Cache vidé ✓');
-  renderCachedTracks();
-  updateStorageDisplay();
-}
-
-function getCacheSize(){
-  return new Promise(resolve => {
-    if(!db){ resolve(0); return; }
-    var total = 0;
-    var tx = db.transaction('tracks', 'readonly');
-    var cur2 = tx.objectStore('tracks').openCursor();
-    cur2.onsuccess = ev => {
-      if(ev.target.result){ total += ev.target.result.value.size || 0; ev.target.result.continue(); }
-    };
-    tx.oncomplete = () => resolve(total);
-  });
-}
-
-async function loadCachedList(){
-  if(!db) return;
-  var tx = db.transaction('tracks', 'readonly');
-  var cur2 = tx.objectStore('tracks').openCursor();
-  cur2.onsuccess = ev => {
-    if(ev.target.result){ cachedTrackIds.add(ev.target.result.key); ev.target.result.continue(); }
-  };
-}
-
+async function initCache(){ /* plus de cache */ }
+async function cacheTrack(){ /* streaming pur */ }
+async function getCachedTrack(){ return null; }
+async function loadCachedList(){ }
+async function clearAllCache(){ notify('Le cache est désactivé — streaming pur activé'); }
+async function deleteCachedTrack(id){ cachedTrackIds.delete(id); }
+function getCacheSize(){ return 0; }
 
 function updateStorageDisplay(){
   var tc=document.getElementById('storage-tracks-count');if(tc)tc.textContent=tracks.length;
@@ -1131,7 +1060,7 @@ function gotoNav(name){
 }
 
 /* CACHE DISABLED - STREAMING ONLY */
-var rawUrl=key=>'/api/stream?key='+encodeURIComponent(key);
+var rawUrl=key=>dlUrl+'/file/'+BUCKET+'/'+encodeURIComponent(key)+'?Authorization='+encodeURIComponent(dlToken);
 
 async function saveMeta(){
   var ts=Date.now();
@@ -1687,10 +1616,11 @@ function initQueueDrag(){
    ÉCONOMIES: 67% des données! 📉
    ═══════════════════════════════════════════════════════════════ */
 
-async function playAt(idx){
+function playAt(idx){
   var t = tracks[idx];
   if(!t || !dlToken) return;
 
+  // Annule le prefetch précédent si encore en cours
   if(window._prefetchController){
     window._prefetchController.abort();
     window._prefetchController = null;
@@ -1701,37 +1631,31 @@ async function playAt(idx){
   renderArtistDetail(); updateMiniPlayer(); updatePlayerScreen();
   setupMediaSession();
 
-  // 1. Cherche en cache IndexedDB — lecture instantanée, 0 MB
-  var cached = await getCachedTrack(t.id);
-  if(cached){
-    aud.src = URL.createObjectURL(cached);
-    aud.load();
-    aud.play().catch(e => console.error('play error:', e));
-    return;
-  }
+  // STREAMING VRAI : URL directe → Range Requests automatiques
+  // Le navigateur ne télécharge QUE les secondes écoutées.
+  aud.src = rawUrl(t.key);
+  aud.load();
+  aud.play().catch(e => console.error('play error:', e));
 
-  // 2. Pas en cache : télécharge, joue, puis sauvegarde en cache
-  try{
-    var resp = await fetch(rawUrl(t.key));
-    if(!resp.ok) throw new Error('HTTP ' + resp.status);
-    var blob = await resp.blob();
-    aud.src = URL.createObjectURL(blob);
-    aud.load();
-    aud.play().catch(e => console.error('play error:', e));
-    // Sauvegarde en arrière-plan pour les prochaines écoutes
-    cacheTrack(t.id, blob).then(() => {
-      renderCachedTracks();
-      updateStorageDisplay();
-    });
-  } catch(e){
-    // Fallback streaming direct
-    console.warn('fetch failed, streaming:', e.message);
-    aud.src = rawUrl(t.key);
-    aud.load();
-    aud.play().catch(err => console.error('play error:', err));
-  }
+  schedulePrefetch(idx);
 }
 
+function schedulePrefetch(currentIdx){
+  clearTimeout(window._prefetchTimer);
+  window._prefetchTimer = setTimeout(async function(){
+    var nextIdx = getNextIdx();
+    if(nextIdx === null || nextIdx === currentIdx) return;
+    var nt = tracks[nextIdx];
+    if(!nt || !dlToken) return;
+    try{
+      window._prefetchController = new AbortController();
+      await fetch(rawUrl(nt.key), {
+        signal: window._prefetchController.signal,
+        headers: { 'Range': 'bytes=0-307199' }
+      });
+    } catch(e){}
+  }, 5000);
+}
 function togglePlay(){if(cur===null) return;if(isPlaying){aud.pause();isPlaying=false;}else{aud.play().catch(()=>{});isPlaying=true;}updatePlayBtns();renderHome();renderPlDetail();}
 function getNextIdx(){var q=getQ();if(!q.length) return null;if(isShuffle){var i;do{i=Math.floor(Math.random()*q.length);}while(q.length>1&&tracks.indexOf(q[i])===cur);return tracks.indexOf(q[i]);}var ci=q.findIndex(t=>tracks.indexOf(t)===cur);return tracks.indexOf(q[(ci+1)%q.length]);}
 function getPrevIdx(){var q=getQ();if(!q.length) return null;var ci=q.findIndex(t=>tracks.indexOf(t)===cur);return tracks.indexOf(q[(ci-1+q.length)%q.length]);}
@@ -1967,7 +1891,7 @@ async function readID3Tags(file){
    On stocke seulement l'URL publique dans imgUrl (pas le base64).
    Cela évite que le JSON de métadonnées devienne énorme.
    ═══════════════════════════════════════════════════════════ */
-async function uploadCoverToB2(base64DataUrl, trackId, creds){
+async function uploadCoverToB2(base64DataUrl, trackId){
   if(!base64DataUrl || !base64DataUrl.startsWith('data:')) return base64DataUrl;
   try{
     // Extraire le type MIME et les données binaires
@@ -1982,12 +1906,10 @@ async function uploadCoverToB2(base64DataUrl, trackId, creds){
     // Clé du fichier image dans B2
     var coverKey = 'covers/' + trackId + ext;
 
-    // Réutilise les creds passés en paramètre (évite un appel API inutile)
-    if(!creds){
-      var cr = await fetch(API+'?action=upload-creds');
-      if(!cr.ok) throw new Error('creds failed');
-      creds = await cr.json();
-    }
+    // Récupère les credentials d'upload
+    var cr = await fetch(API+'?action=upload-creds');
+    if(!cr.ok) throw new Error('creds failed');
+    var creds = await cr.json();
 
     // Calcule SHA1
     var hash = await crypto.subtle.digest('SHA-1', buf);
@@ -2016,7 +1938,7 @@ async function uploadCoverToB2(base64DataUrl, trackId, creds){
   }
 }
 
-async function handleFiles(files){var af=Array.from(files).filter(f=>f.type.startsWith('audio/')||/\.(mp3|wav|ogg|flac|aac|m4a|opus)$/i.test(f.name));if(!af.length){notify('Aucun fichier audio détecté');return;}await Promise.all(af.map(uploadFile));await saveMeta();renderHome();}
+function handleFiles(files){var af=Array.from(files).filter(f=>f.type.startsWith('audio/')||/\.(mp3|wav|ogg|flac|aac|m4a|opus)$/i.test(f.name));if(!af.length){notify('Aucun fichier audio détecté');return;}af.forEach(uploadFile);}
 
 async function uploadFile(file){
   var id=genId(),ext=(file.name.match(/\.[^.]+$/)||['.mp3'])[0].toLowerCase();
@@ -2073,7 +1995,7 @@ async function uploadFile(file){
     item.querySelector('.uphd').innerHTML=`<span class="upname">${esc(name)}</span><span class="updone">✓ Uploadé</span>`;
     item.querySelector('.upbg').style.display='none';
     // Upload la pochette vers B2 si elle existe (évite de stocker du base64 dans le JSON)
-    var finalCoverUrl = cover ? await uploadCoverToB2(cover, id, creds) : '';
+    var finalCoverUrl = cover ? await uploadCoverToB2(cover, id) : '';
     // Crée le track avec toutes les métadonnées lues automatiquement
     var newTrack={id,key,name,artist,hue:hue(name),imgUrl:finalCoverUrl,fileId:fileId||''};
     tracks.push(newTrack);
@@ -2108,6 +2030,7 @@ async function uploadFile(file){
         }
       });
     }
+    await saveMeta();
     renderHome();
     var infoMsg='✓ '+name+(artist!=='Artiste inconnu'?' — '+artist:'')+(album?' ['+album+']':'');
     notify(infoMsg);
