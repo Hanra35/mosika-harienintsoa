@@ -589,22 +589,35 @@
 
 <!-- CACHE / TITRES TÉLÉCHARGÉS -->
 <div id="s-cached-tracks" class="screen hidden">
-  <div style="padding:calc(var(--safe-t)+18px) 20px 4px;display:flex;align-items:center;justify-content:space-between;">
+  <!-- Header -->
+  <div style="padding:calc(var(--safe-t)+18px) 20px 10px;display:flex;align-items:center;justify-content:space-between;">
     <span class="home-title">Cache</span>
+    <button onclick="clearAllCache()" style="background:transparent;border:none;color:var(--sub);font-size:13px;font-weight:600;padding:6px 10px;border-radius:10px;cursor:pointer;">Tout vider</button>
   </div>
-  <div style="flex:1;overflow-y:auto;padding:20px 16px var(--scroll-pb);-webkit-overflow-scrolling:touch;">
-    <div style="text-align:center;padding:40px 20px;">
-      <div style="width:72px;height:72px;background:var(--acc)22;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="var(--acc)"><path d="M8 5v14l11-7z"/></svg>
+  <!-- Carte stats -->
+  <div style="margin:0 16px 14px;background:var(--card);border-radius:18px;padding:16px 18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:38px;height:38px;background:var(--acc-dim);border-radius:12px;display:flex;align-items:center;justify-content:center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="var(--acc)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        </div>
+        <div>
+          <p style="font-size:14px;font-weight:700;color:var(--text);" id="cache-count-label">0 titre mis en cache</p>
+          <p style="font-size:12px;color:var(--sub);" id="cache-size-label">0 MB utilisés</p>
+        </div>
       </div>
-      <p style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px;">Streaming progressif</p>
-      <p style="font-size:14px;color:var(--sub);line-height:1.6;max-width:280px;margin:0 auto;">Le cache local est désactivé. Melo streame ta musique comme Spotify — seules les secondes que tu écoutes sont téléchargées. Aucune donnée n'est gaspillée.</p>
-      <div style="margin-top:24px;background:var(--card);border-radius:16px;padding:16px;text-align:left;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><div style="width:8px;height:8px;background:#4ade80;border-radius:50%;"></div><span style="font-size:13px;color:var(--text);">Lecture instantanée sans attente</span></div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><div style="width:8px;height:8px;background:#4ade80;border-radius:50%;"></div><span style="font-size:13px;color:var(--text);">Zéro gaspillage si tu skips</span></div>
-        <div style="display:flex;align-items:center;gap:10px;"><div style="width:8px;height:8px;background:#4ade80;border-radius:50%;"></div><span style="font-size:13px;color:var(--text);">Compatible iPhone 6s et tous appareils</span></div>
-      </div>
+      <button onclick="playRandomCached()" style="background:var(--acc);border:none;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(77,207,191,.35);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>
+      </button>
     </div>
+    <div style="background:var(--card2);border-radius:8px;height:6px;overflow:hidden;">
+      <div id="cache-bar" style="height:100%;width:0%;background:var(--acc);border-radius:8px;transition:width .4s;"></div>
+    </div>
+    <p style="font-size:11px;color:var(--sub);margin-top:6px;">Les titres écoutés sont sauvegardés automatiquement pour une lecture hors-ligne.</p>
+  </div>
+  <!-- Liste des titres cachés -->
+  <div style="flex:1;overflow-y:auto;padding:0 16px var(--scroll-pb);-webkit-overflow-scrolling:touch;">
+    <div id="cached-list"></div>
   </div>
 </div>
 
@@ -766,6 +779,18 @@ async function loadCachedList(){
 
 function updateStorageDisplay(){
   var tc=document.getElementById('storage-tracks-count');if(tc)tc.textContent=tracks.length;
+  // Met à jour les stats de l'écran Cache
+  var n = cachedTrackIds.size;
+  var cl = document.getElementById('cache-count-label');
+  if(cl) cl.textContent = n + ' titre' + (n>1?'s':'') + ' mis en cache';
+  getCacheSize().then(bytes => {
+    var mb = (bytes/1024/1024).toFixed(1);
+    var sl = document.getElementById('cache-size-label');
+    if(sl) sl.textContent = mb + ' MB utilisés';
+    // Barre de progression (max 500 MB arbitraire)
+    var bar = document.getElementById('cache-bar');
+    if(bar) bar.style.width = Math.min(100, bytes/(500*1024*1024)*100).toFixed(1) + '%';
+  });
 }
 
 var bucketInfoLoaded = false;
@@ -1127,7 +1152,7 @@ function closePlayer(){
 function gotoNav(name){
   /* FIX: Si on quitte le player via la nav, restaurer le mini-player */
   if(cur!==null) document.getElementById('mini-player').classList.remove('hidden-in-player');
-  Object.keys(SCREENS).forEach(n=>{var el=document.getElementById(SCREENS[n]);if(!el) return;if(n===name){el.classList.remove('hidden','slide-left');}else{el.classList.remove('slide-left');el.classList.add('hidden');}});activeScreen=name;['home','playlists','artists','import','storage','cached-tracks'].forEach(n=>{var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});if(name==='home') renderHome();if(name==='playlists') renderPlScreen();if(name==='artists') renderArtists();if(name==='storage'){updateStorageDisplay();if(!bucketInfoLoaded) refreshBucketInfo();}if(name==='cached-tracks') renderCachedTracks();
+  Object.keys(SCREENS).forEach(n=>{var el=document.getElementById(SCREENS[n]);if(!el) return;if(n===name){el.classList.remove('hidden','slide-left');}else{el.classList.remove('slide-left');el.classList.add('hidden');}});activeScreen=name;['home','playlists','artists','import','storage','cached-tracks'].forEach(n=>{var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});if(name==='home') renderHome();if(name==='playlists') renderPlScreen();if(name==='artists') renderArtists();if(name==='storage'){updateStorageDisplay();if(!bucketInfoLoaded) refreshBucketInfo();}if(name==='cached-tracks'){renderCachedTracks();updateStorageDisplay();}
 }
 
 /* CACHE DISABLED - STREAMING ONLY */
@@ -1697,8 +1722,10 @@ async function playAt(idx){
   }
 
   cur = idx;
+  isPlaying = true;
   renderHome(); renderPlDetail(); renderAlbumDetail();
   renderArtistDetail(); updateMiniPlayer(); updatePlayerScreen();
+  updatePlayBtns();
   setupMediaSession();
 
   // 1. Cherche en cache IndexedDB — lecture instantanée, 0 MB
