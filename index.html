@@ -1010,16 +1010,30 @@ async function autoFetchLyrics(trackId){
       setStatus('✓ '+nb2+' lignes avec timestamps générés ! Clique Enregistrer.','#22c55e');
 
     } else {
-      /* ── ÉTAPE 2 : Fallback IA avec web search ── */
-      setStatus('⚡ Non trouvé sur LRCLIB, recherche avec IA...');
-      var lrcFromAI2=await generateLrcWithAI(t.name, t.artist, null);
-      var ta2=document.getElementById('lrc-ta');
-      if(ta2) ta2.value=lrcFromAI2;
-      var nb3=(lrcFromAI2.match(/\[\d+:\d+/g)||[]).length;
-      if(nb3>3){
-        setStatus('✓ '+nb3+' lignes générées par IA. Timestamps approximatifs.','#f59e0b');
+      /* ── ÉTAPE 2 : Fallback MUSIXMATCH ── */
+      setStatus('⚡ Non trouvé sur LRCLIB, recherche sur Musixmatch...');
+      
+      var mxmRes = await fetch('./api/api?action=lyrics&q_track=' + trackEnc + '&q_artist=' + artistEnc);
+      
+      if (mxmRes.ok) {
+        var mxmData = await mxmRes.json();
+        if (mxmData.lyrics && mxmData.lyrics.trim().length > 0) {
+          var ta2 = document.getElementById('lrc-ta');
+          if(ta2) ta2.value = mxmData.lyrics;
+          
+          var nb3 = (mxmData.lyrics.match(/\[\d+:\d+/g)||[]).length;
+          if (nb3 > 3) {
+            setStatus('✓ Paroles synchronisées trouvées sur Musixmatch ! Clique Enregistrer.','#22c55e');
+          } else {
+            // Retire la pub Musixmatch si présente en fin de texte
+            ta2.value = mxmData.lyrics.replace(/\*{7} This Lyrics is NOT for Commercial use \*{7}.*/gi, '').trim();
+            setStatus('✓ Paroles trouvées sur Musixmatch (non-synchronisées).','#f59e0b');
+          }
+        } else {
+          setStatus('⚠️ Paroles introuvables pour cette chanson.','#ff4d4d');
+        }
       } else {
-        setStatus('⚠️ Paroles introuvables pour cette chanson.','#ff4d4d');
+        setStatus('⚠️ Erreur de connexion à Musixmatch.','#ff4d4d');
       }
     }
 
@@ -1034,33 +1048,7 @@ async function autoFetchLyrics(trackId){
   }
 }
 
-async function generateLrcWithAI(trackName, artistName, plainLyrics){
-  var prompt;
-  if(plainLyrics){
-    prompt='Convertis ces paroles de la chanson "'+trackName+'" de '+artistName+' en format LRC synchronisé.\n'
-      +'Ajoute des timestamps [mm:ss.xx] réalistes pour chaque ligne.\n'
-      +'RÉPONDS UNIQUEMENT avec le LRC brut, aucun texte avant ou après.\n\n'
-      +'Paroles :\n'+plainLyrics;
-  } else {
-    prompt='Génère les paroles synchronisées LRC pour la chanson "'+trackName+'" de '+artistName+'.\n'
-      +'Utilise le web search pour trouver les paroles exactes.\n'
-      +'Format : [mm:ss.xx] texte de la ligne\n'
-      +'RÉPONDS UNIQUEMENT avec le LRC brut. Commence par [00:';
-  }
-  var body={model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]};
-  if(!plainLyrics) body.tools=[{type:'web_search_20250305',name:'web_search'}];
-  var res=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
-  });
-  if(!res.ok) throw new Error('API IA erreur '+res.status);
-  var data=await res.json();
-  var text='';
-  (data.content||[]).forEach(function(b){if(b.type==='text') text+=b.text;});
-  // Extrait uniquement les lignes LRC valides
-  var lrcLines=text.trim().split('\n').filter(function(l){return /^\[\d+:\d+/.test(l.trim());});
-  return lrcLines.join('\n');
-}
+
 
 
 function saveLyrics(trackId){
