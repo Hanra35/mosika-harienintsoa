@@ -5,6 +5,9 @@ const APP_KEY = 'K003dwNhrjinpVEyi4VKsJxxZmL3LO4';
 const BUCKET  = 'melo-music-2026';
 const META    = 'melo-metadata.json';
 
+// 👇 Token Musixmatch (web-desktop-app-v1.0)
+const MUSIXMATCH_TOKEN = '2605cebe1ce741a292893ca977a106cdd39cbd5af82732947436';
+
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -134,65 +137,6 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') { res.status(200).end(); return; }
   const action = req.query?.action;
 
-  // ==========================================
-  // ACTION : LYRICS (À METTRE TOUT EN HAUT)
-  // ==========================================
-  if (action === 'lyrics') {
-    const { q_track, q_artist } = req.query;
-    if (!q_track || !q_artist) {
-      res.status(400).json({ error: 'Paramètres q_track et q_artist manquants' });
-      return;
-    }
-
-    const MXM_TOKEN = '2605cebe1ce741a292893ca977a106cdd39cbd5af82732947436';
-    
-    try {
-      // Appel direct et unique à Musixmatch (macro.subtitles.get)
-      const mxmUrl = `https://apic-desktop.musixmatch.com/ws/1.1/macro.subtitles.get?format=json&app_id=web-desktop-app-v1.0&usertoken=${MXM_TOKEN}&q_track=${encodeURIComponent(q_track)}&q_artist=${encodeURIComponent(q_artist)}`;
-      
-      const response = await fetch(mxmUrl, {
-        headers: { 'Cookie': 'x-mxm-token-guid=' }
-      });
-      const data = await response.json();
-      
-      const macro = data.message?.body?.macro_calls;
-      if (!macro) {
-        res.status(404).json({ error: 'Chanson introuvable sur Musixmatch' });
-        return;
-      }
-
-      let lyricsText = '';
-      
-      // 1. Cherche les paroles synchronisées (LRC)
-      const subMsg = macro['track.subtitles.get']?.message;
-      if (subMsg?.header?.status_code === 200 && subMsg?.body?.subtitle_list?.length > 0) {
-        lyricsText = subMsg.body.subtitle_list[0].subtitle.subtitle_body;
-      } 
-      // 2. Sinon, cherche les paroles simples
-      else {
-        const lyrMsg = macro['track.lyrics.get']?.message;
-        if (lyrMsg?.header?.status_code === 200 && lyrMsg?.body?.lyrics?.lyrics_body) {
-          lyricsText = lyrMsg.body.lyrics.lyrics_body;
-        }
-      }
-
-      if (!lyricsText) {
-        res.status(404).json({ error: 'Pas de paroles disponibles' });
-        return;
-      }
-
-      res.status(200).json({ lyrics: lyricsText });
-    } catch (err) {
-      res.status(500).json({ error: 'Erreur Musixmatch : ' + err.message });
-    }
-    
-    // Le "return" est crucial ici pour ne pas exécuter Backblaze B2 ensuite
-    return;
-  }
-  // ==========================================
-
-  // --- LE RESTE DE TON CODE EXISTANT (Backblaze) ---
-  
   try {
     const a   = await b2Auth();
     const bid = await getBucketId(a);
@@ -212,52 +156,6 @@ module.exports = async (req, res) => {
         lastModified: meta.lastModified,
         downloadUrl: a.downloadUrl, downloadToken: dlAuth.authorizationToken,
       });
-      return;
-    }
-if (action === 'lyrics') {
-      const { q_track, q_artist } = req.query;
-      if (!q_track || !q_artist) {
-        res.status(400).json({ error: 'Paramètres q_track et q_artist requis' });
-        return;
-      }
-
-      // Ton token personnel Musixmatch
-      const MXM_TOKEN = '2605cebe1ce741a292893ca977a106cdd39cbd5af82732947436';
-      
-      try {
-        // 1. Chercher l'ID de la chanson
-        const searchUrl = `https://apic-desktop.musixmatch.com/ws/1.1/track.search?format=json&q_track=${encodeURIComponent(q_track)}&q_artist=${encodeURIComponent(q_artist)}&user_token=${MXM_TOKEN}&app_id=web-desktop-app-v1.0`;
-        const searchRes = await fetch(searchUrl);
-        const searchData = await searchRes.json();
-        
-        const trackList = searchData.message?.body?.track_list || [];
-        if (trackList.length === 0) {
-          res.status(404).json({ error: 'Chanson introuvable sur Musixmatch' });
-          return;
-        }
-
-        const trackId = trackList[0].track.track_id;
-
-        // 2. Tenter de récupérer les paroles synchronisées (LRC)
-        const subUrl = `https://apic-desktop.musixmatch.com/ws/1.1/track.subtitle.get?format=json&track_id=${trackId}&user_token=${MXM_TOKEN}&app_id=web-desktop-app-v1.0`;
-        const subRes = await fetch(subUrl);
-        const subData = await subRes.json();
-
-        let lyricsText = '';
-        if (subData.message?.body?.subtitle?.subtitle_body) {
-          lyricsText = subData.message.body.subtitle.subtitle_body;
-        } else {
-          // 3. Fallback : Si pas de synchro, récupérer les paroles standards
-          const lyrUrl = `https://apic-desktop.musixmatch.com/ws/1.1/track.lyrics.get?format=json&track_id=${trackId}&user_token=${MXM_TOKEN}&app_id=web-desktop-app-v1.0`;
-          const lyrRes = await fetch(lyrUrl);
-          const lyrData = await lyrRes.json();
-          lyricsText = lyrData.message?.body?.lyrics?.lyrics_body || '';
-        }
-
-        res.status(200).json({ lyrics: lyricsText });
-      } catch (err) {
-        res.status(500).json({ error: 'Erreur Musixmatch : ' + err.message });
-      }
       return;
     }
 
@@ -311,6 +209,53 @@ if (action === 'lyrics') {
         });
       }
       res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (action === 'musixmatch') {
+      const track  = req.query?.track  || '';
+      const artist = req.query?.artist || '';
+      if (!track) { res.status(400).json({ error: 'Paramètre track manquant' }); return; }
+
+      const base = 'https://apic-desktop.musixmatch.com/ws/1.1';
+      const headers = {
+        'authority': 'apic-desktop.musixmatch.com',
+        'cookie': `mxm-desktop-app-v1.0=${MUSIXMATCH_TOKEN}`
+      };
+      const q = encodeURIComponent(track) + (artist ? '&q_artist=' + encodeURIComponent(artist) : '');
+
+      // 1. Cherche le track
+      const srRes = await fetch(
+        `${base}/track.search?q_track=${q}&page_size=5&page=1&s_track_rating=desc&usertoken=${MUSIXMATCH_TOKEN}&app_id=web-desktop-app-v1.0`,
+        { headers }
+      );
+      const srData = await srRes.json();
+      const trackList = srData?.message?.body?.track_list || [];
+      if (!trackList.length) { res.status(200).json({ found: false }); return; }
+
+      const trackId = trackList[0].track.track_id;
+      const hasSubtitle = trackList[0].track.has_subtitles === 1;
+
+      if (!hasSubtitle) {
+        // Paroles plain seulement
+        const lyRes = await fetch(
+          `${base}/track.lyrics.get?track_id=${trackId}&usertoken=${MUSIXMATCH_TOKEN}&app_id=web-desktop-app-v1.0`,
+          { headers }
+        );
+        const lyData = await lyRes.json();
+        const plain = lyData?.message?.body?.lyrics?.lyrics_body || '';
+        res.status(200).json({ found: !!plain, synced: false, plain: plain.replace(/\*+.*$/s, '').trim() });
+        return;
+      }
+
+      // Paroles synchronisées (LRC)
+      const subRes = await fetch(
+        `${base}/track.subtitle.get?track_id=${trackId}&subtitle_format=lrc&usertoken=${MUSIXMATCH_TOKEN}&app_id=web-desktop-app-v1.0`,
+        { headers }
+      );
+      const subData = await subRes.json();
+      const lrc = subData?.message?.body?.subtitle?.subtitle_body || '';
+      res.status(200).json({ found: !!lrc, synced: true, lrc });
       return;
     }
 
