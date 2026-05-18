@@ -747,13 +747,17 @@ async function deleteCachedTrack(id){
 }
 
 async function clearAllCache(){
+  if(!confirm('Vider tout le cache ? Les chansons devront être re-téléchargées.')) return;
   cachedTrackIds.clear();
-  if(!db) return;
-  var tx = db.transaction('tracks', 'readwrite');
-  tx.objectStore('tracks').clear();
-  notify('Cache vidé ✓');
+  if(db){
+    var tx = db.transaction('tracks', 'readwrite');
+    tx.objectStore('tracks').clear();
+    await new Promise(r => { tx.oncomplete = r; tx.onerror = r; });
+  }
   renderCachedTracks();
   updateStorageDisplay();
+  renderHome();
+  notify('Cache vidé ✓');
 }
 
 function getCacheSize(){
@@ -830,16 +834,25 @@ function renderCachedTracks(){
   if(!el) return;
   var cachedList = tracks.filter(t => cachedTrackIds.has(t.id));
   if(!cachedList.length){
-    el.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="empty-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="var(--sub)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div><p class="empty-title">Aucun cache</p><p class="empty-sub">Les musiques s\'ajoutent au cache lors de la lecture</p></div>';
+    el.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="empty-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="var(--sub)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div><p class="empty-title">Aucun cache</p><p class="empty-sub">Les musiques s\'ajoutent automatiquement au cache lors de la lecture</p></div>';
     return;
   }
   el.innerHTML = cachedList.map(t => {
     var idx = tracks.indexOf(t);
     var h = t.hue || hue(t.name);
-    var artStyle = t.imgUrl ? 'background:'+abg(h)+';background-image:url('+t.imgUrl+');background-size:cover;background-position:center' : 'background:'+abg(h);
+    var imgSrc = resolveImgUrl(t.imgUrl);
+    var artStyle = imgSrc
+      ? 'background:'+abg(h)+';background-image:url('+imgSrc+');background-size:cover;background-position:center'
+      : 'background:'+abg(h);
     return '<div class="song-row" onclick="rowClick(event,'+idx+')">'
-      +'<div class="song-art" style="'+artStyle+'">'+(t.imgUrl?'':noteIco(20,'rgba(255,255,255,.8)'))+'</div>'
-      +'<div class="song-info"><p class="song-name">'+esc(t.name)+'</p><p class="song-artist">'+esc(t.artist)+'</p></div>'
+      +'<div class="song-art" style="'+artStyle+'">'+(imgSrc?'':noteIco(20,'rgba(255,255,255,.8)'))+'</div>'
+      +'<div class="song-info">'
+        +'<p class="song-name">'+esc(t.name)+'</p>'
+        +'<p class="song-artist" style="display:flex;align-items:center;gap:5px;">'
+          +'<svg width="11" height="11" viewBox="0 0 24 24" fill="var(--acc)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>'
+          +esc(t.artist)
+        +'</p>'
+      +'</div>'
       +'<div class="song-menu"><button onclick="event.stopPropagation();removeCacheItem(\''+t.id+'\')">'
       +'<svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>'
       +'</button></div></div>';
@@ -1196,6 +1209,8 @@ function gotoNav(name){
 
 /* CACHE DISABLED - STREAMING ONLY */
 var rawUrl=key=>'/api/api?action=stream&key='+encodeURIComponent(key);
+// iOS : URL B2 directe avec token — évite le proxy Vercel pour un chargement instantané
+var directUrl=key=>dlUrl+'/file/'+BUCKET+'/'+key.split('/').map(encodeURIComponent).join('/')+'?Authorization='+encodeURIComponent(dlToken);
 
 async function saveMeta(){
   var ts=Date.now();
@@ -1767,11 +1782,25 @@ async function playAt(idx){
   updatePlayBtns();
   setupMediaSession();
 
-  // iOS Safari : URL directe obligatoire pour les requêtes Range (HTTP 206)
+  // iOS Safari
   if(isIOS){
-    aud.src = rawUrl(t.key);
+    // 1. Vérifie le cache d'abord — lecture instantanée 0 MB
+    var cachedIOS = await getCachedTrack(t.id);
+    if(cachedIOS){
+      aud.src = URL.createObjectURL(cachedIOS);
+      aud.load();
+      aud.play().catch(e => console.error('iOS play error (cache):', e));
+      return;
+    }
+    // 2. Pas en cache : lecture directe B2 (Range requests natifs)
+    aud.src = directUrl(t.key);
     aud.load();
     aud.play().catch(e => console.error('iOS play error:', e));
+    // 3. Sauvegarde en arrière-plan pour les prochaines écoutes
+    fetch(directUrl(t.key))
+      .then(r => r.ok ? r.blob() : null)
+      .then(blob => { if(blob) return cacheTrack(t.id, blob).then(()=>{ renderCachedTracks(); updateStorageDisplay(); }); })
+      .catch(()=>{});
     return;
   }
 
