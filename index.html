@@ -688,6 +688,8 @@ var activeHomeTab='overview';
 var pickerSelected=[],pickerTarget=null,pickerType=null;
 /* FIX 4: queue drag state */
 var qDragItems=[];
+/* iOS Safari detection */
+var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
 
 /* ═══════════════════════════════════════════════════════════
    STREAMING PUR — Range Requests (comme Spotify)
@@ -901,7 +903,14 @@ function loadLyricsForTrack(){
   lrcLines=t&&t.lrc?parseLRC(t.lrc):[];
   lrcActiveIdx=-1;
   if(!lrcLines.length){
-    el.innerHTML='<div class="lyrics-empty">Aucune parole.<br>Appuie sur <b>Modifier</b> pour en ajouter.</div>';
+    if(t&&t.lrc&&t.lrc.trim().length>5){
+      // Paroles plain sans timestamps — affichage statique
+      el.innerHTML=t.lrc.trim().split('\n').map(line=>
+        `<div class="lrc-line" style="opacity:0.85;font-size:16px;cursor:default;">${esc(line)||'&nbsp;'}</div>`
+      ).join('');
+    } else {
+      el.innerHTML='<div class="lyrics-empty">Aucune parole.<br>Appuie sur <b>Modifier</b> pour en ajouter.</div>';
+    }
     return;
   }
   el.innerHTML=lrcLines.map((l,i)=>`<div class="lrc-line" id="lrc-${i}" onclick="aud.currentTime=${l.time}">${esc(l.text)}</div>`).join('');
@@ -1010,30 +1019,46 @@ async function autoFetchLyrics(trackId){
       setStatus('✓ '+nb2+' lignes avec timestamps générés ! Clique Enregistrer.','#22c55e');
 
     } else {
-      /* ── ÉTAPE 2 : Fallback MUSIXMATCH ── */
-      setStatus('⚡ Non trouvé sur LRCLIB, recherche sur Musixmatch...');
-      
-      var mxmRes = await fetch('./api/api?action=lyrics&q_track=' + trackEnc + '&q_artist=' + artistEnc);
-      
-      if (mxmRes.ok) {
-        var mxmData = await mxmRes.json();
-        if (mxmData.lyrics && mxmData.lyrics.trim().length > 0) {
-          var ta2 = document.getElementById('lrc-ta');
-          if(ta2) ta2.value = mxmData.lyrics;
-          
-          var nb3 = (mxmData.lyrics.match(/\[\d+:\d+/g)||[]).length;
-          if (nb3 > 3) {
-            setStatus('✓ Paroles synchronisées trouvées sur Musixmatch ! Clique Enregistrer.','#22c55e');
-          } else {
-            // Retire la pub Musixmatch si présente en fin de texte
-            ta2.value = mxmData.lyrics.replace(/\*{7} This Lyrics is NOT for Commercial use \*{7}.*/gi, '').trim();
-            setStatus('✓ Paroles trouvées sur Musixmatch (non-synchronisées).','#f59e0b');
-          }
+      /* ── ÉTAPE 2 : Musixmatch (via proxy Vercel) ── */
+      setStatus('🔍 Recherche sur Musixmatch...');
+      var mxFound = null;
+      try{
+        var mxUrl = API + '?action=musixmatch&track=' + trackEnc + (t.artist ? '&artist=' + artistEnc : '');
+        var mxRes = await fetch(mxUrl);
+        if(mxRes.ok){
+          var mxData = await mxRes.json();
+          if(mxData.found) mxFound = mxData;
+        }
+      }catch(mxErr){ console.warn('Musixmatch error:', mxErr); }
+
+      if(mxFound && mxFound.synced && mxFound.lrc){
+        // Paroles synchronisées Musixmatch
+        var ta=document.getElementById('lrc-ta');
+        if(ta) ta.value = mxFound.lrc.trim();
+        var nb=(mxFound.lrc.match(/\[\d+:\d+/g)||[]).length;
+        setStatus('✓ Paroles synchronisées Musixmatch ('+nb+' lignes) ! Clique Enregistrer.','#22c55e');
+
+      } else if(mxFound && !mxFound.synced && mxFound.plain){
+        // Paroles plain Musixmatch → timestamps via IA
+        setStatus('⚡ Paroles Musixmatch trouvées, génération des timestamps...');
+        var lrcMX = await generateLrcWithAI(t.name, t.artist, mxFound.plain);
+        var ta=document.getElementById('lrc-ta');
+        if(ta) ta.value = lrcMX;
+        var nb=(lrcMX.match(/\[\d+:\d+/g)||[]).length;
+        setStatus('✓ '+nb+' lignes (Musixmatch + IA). Clique Enregistrer.','#22c55e');
+
+      } else {
+        /* ── ÉTAPE 3 : Fallback IA avec web search ── */
+        setStatus('⚡ Non trouvé, génération par IA...');
+        var lrcFromAI2=await generateLrcWithAI(t.name, t.artist, null);
+        var ta2=document.getElementById('lrc-ta');
+        if(ta2) ta2.value=lrcFromAI2;
+        var nb3=(lrcFromAI2.match(/\[\d+:\d+/g)||[]).length;
+        if(nb3>3){
+          setStatus('✓ '+nb3+' lignes générées par IA. Timestamps approximatifs.','#f59e0b');
         } else {
           setStatus('⚠️ Paroles introuvables pour cette chanson.','#ff4d4d');
         }
-      } else {
-        setStatus('⚠️ Erreur de connexion à Musixmatch.','#ff4d4d');
       }
     }
 
@@ -1048,7 +1073,33 @@ async function autoFetchLyrics(trackId){
   }
 }
 
-
+async function generateLrcWithAI(trackName, artistName, plainLyrics){
+  var prompt;
+  if(plainLyrics){
+    prompt='Convertis ces paroles de la chanson "'+trackName+'" de '+artistName+' en format LRC synchronisé.\n'
+      +'Ajoute des timestamps [mm:ss.xx] réalistes pour chaque ligne.\n'
+      +'RÉPONDS UNIQUEMENT avec le LRC brut, aucun texte avant ou après.\n\n'
+      +'Paroles :\n'+plainLyrics;
+  } else {
+    prompt='Génère les paroles synchronisées LRC pour la chanson "'+trackName+'" de '+artistName+'.\n'
+      +'Utilise le web search pour trouver les paroles exactes.\n'
+      +'Format : [mm:ss.xx] texte de la ligne\n'
+      +'RÉPONDS UNIQUEMENT avec le LRC brut. Commence par [00:';
+  }
+  var body={model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]};
+  if(!plainLyrics) body.tools=[{type:'web_search_20250305',name:'web_search'}];
+  var res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!res.ok) throw new Error('API IA erreur '+res.status);
+  var data=await res.json();
+  var text='';
+  (data.content||[]).forEach(function(b){if(b.type==='text') text+=b.text;});
+  // Extrait uniquement les lignes LRC valides
+  var lrcLines=text.trim().split('\n').filter(function(l){return /^\[\d+:\d+/.test(l.trim());});
+  return lrcLines.join('\n');
+}
 
 
 function saveLyrics(trackId){
@@ -1716,6 +1767,14 @@ async function playAt(idx){
   updatePlayBtns();
   setupMediaSession();
 
+  // iOS Safari : URL directe obligatoire pour les requêtes Range (HTTP 206)
+  if(isIOS){
+    aud.src = rawUrl(t.key);
+    aud.load();
+    aud.play().catch(e => console.error('iOS play error:', e));
+    return;
+  }
+
   // 1. Cherche en cache IndexedDB — lecture instantanée, 0 MB
   var cached = await getCachedTrack(t.id);
   if(cached){
@@ -1733,13 +1792,11 @@ async function playAt(idx){
     aud.src = URL.createObjectURL(blob);
     aud.load();
     aud.play().catch(e => console.error('play error:', e));
-    // Sauvegarde en arrière-plan pour les prochaines écoutes
     cacheTrack(t.id, blob).then(() => {
       renderCachedTracks();
       updateStorageDisplay();
     });
   } catch(e){
-    // Fallback streaming direct
     console.warn('fetch failed, streaming:', e.message);
     aud.src = rawUrl(t.key);
     aud.load();
