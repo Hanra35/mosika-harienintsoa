@@ -217,58 +217,80 @@ module.exports = async (req, res) => {
       const artist = req.query?.artist || '';
       if (!track) { res.status(400).json({ error: 'Paramètre track manquant' }); return; }
 
-      const base = 'https://apic-desktop.musixmatch.com/ws/1.1';
-      const headers = {
-        'authority': 'apic-desktop.musixmatch.com',
-        'cookie': `mxm-desktop-app-v1.0=${MUSIXMATCH_TOKEN}`
-      };
-      const q = encodeURIComponent(track) + (artist ? '&q_artist=' + encodeURIComponent(artist) : '');
+      const base = 'https://api.musixmatch.com/ws/1.1';
+      const tok  = MUSIXMATCH_TOKEN;
+      const qs   = `usertoken=${tok}&app_id=web-desktop-app-v1.0`;
+      const q    = encodeURIComponent(track) + (artist ? '&q_artist=' + encodeURIComponent(artist) : '');
 
-      // 1. Cherche le track
-      const srRes = await fetch(
-        `${base}/track.search?q_track=${q}&page_size=5&page=1&s_track_rating=desc&usertoken=${MUSIXMATCH_TOKEN}&app_id=web-desktop-app-v1.0`,
-        { headers }
-      );
-      const srData = await srRes.json();
-      const trackList = srData?.message?.body?.track_list || [];
-      if (!trackList.length) { res.status(200).json({ found: false }); return; }
+      try {
+        // 1. Cherche le track
+        const srRes  = await fetch(`${base}/track.search?q_track=${q}&page_size=5&page=1&s_track_rating=desc&${qs}`);
+        if (!srRes.ok) { res.status(200).json({ found: false, error: `search ${srRes.status}` }); return; }
+        const srData = await srRes.json();
+        const status = srData?.message?.header?.status_code;
+        if (status !== 200) { res.status(200).json({ found: false, error: `mxm_status ${status}` }); return; }
 
-      const trackId = trackList[0].track.track_id;
-      const hasSubtitle = trackList[0].track.has_subtitles === 1;
+        const trackList = srData?.message?.body?.track_list || [];
+        if (!trackList.length) { res.status(200).json({ found: false }); return; }
 
-      if (!hasSubtitle) {
-        // Paroles plain seulement
-        const lyRes = await fetch(
-          `${base}/track.lyrics.get?track_id=${trackId}&usertoken=${MUSIXMATCH_TOKEN}&app_id=web-desktop-app-v1.0`,
-          { headers }
-        );
-        const lyData = await lyRes.json();
-        const plain = lyData?.message?.body?.lyrics?.lyrics_body || '';
-        res.status(200).json({ found: !!plain, synced: false, plain: plain.replace(/\*+.*$/s, '').trim() });
-        return;
+        const trackId    = trackList[0].track.track_id;
+        const hasSubtitle = trackList[0].track.has_subtitles === 1;
+
+        if (!hasSubtitle) {
+          const lyRes  = await fetch(`${base}/track.lyrics.get?track_id=${trackId}&${qs}`);
+          const lyData = await lyRes.json();
+          const plain  = lyData?.message?.body?.lyrics?.lyrics_body || '';
+          res.status(200).json({ found: !!plain, synced: false, plain: plain.replace(/\*+.*$/s, '').trim() });
+          return;
+        }
+
+        // Paroles synchronisées (LRC)
+        const subRes  = await fetch(`${base}/track.subtitle.get?track_id=${trackId}&subtitle_format=lrc&${qs}`);
+        const subData = await subRes.json();
+        const lrc     = subData?.message?.body?.subtitle?.subtitle_body || '';
+        res.status(200).json({ found: !!lrc, synced: true, lrc });
+      } catch (err) {
+        res.status(200).json({ found: false, error: err.message });
       }
-
-      // Paroles synchronisées (LRC)
-      const subRes = await fetch(
-        `${base}/track.subtitle.get?track_id=${trackId}&subtitle_format=lrc&usertoken=${MUSIXMATCH_TOKEN}&app_id=web-desktop-app-v1.0`,
-        { headers }
-      );
-      const subData = await subRes.json();
-      const lrc = subData?.message?.body?.subtitle?.subtitle_body || '';
-      res.status(200).json({ found: !!lrc, synced: true, lrc });
       return;
     }
 
     if (action === 'stream') {
       const key = req.query?.key;
       if (!key) { res.status(400).json({ error: 'Paramètre key manquant' }); return; }
+
       const dlUrl = `${a.downloadUrl}/file/${BUCKET}/${key.split('/').map(encodeURIComponent).join('/')}`;
+      const rangeHeader = req.headers['range'];
+
+      if (rangeHeader) {
+        // iOS Safari : requête partielle (Range) — obligatoire pour lire l'audio
+        const r = await fetch(dlUrl, {
+          headers: { Authorization: a.authorizationToken, Range: rangeHeader }
+        });
+        if (!r.ok && r.status !== 206) { res.status(r.status).end(); return; }
+        const contentType   = r.headers.get('content-type')   || 'audio/mpeg';
+        const contentRange  = r.headers.get('content-range')  || '';
+        const contentLength = r.headers.get('content-length') || '';
+        res.setHeader('Content-Type',  contentType);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'public, max-age=86400');
+        if (contentRange)  res.setHeader('Content-Range',  contentRange);
+        if (contentLength) res.setHeader('Content-Length', contentLength);
+        const buf = Buffer.from(await r.arrayBuffer());
+        res.status(206).send(buf);
+        return;
+      }
+
+      // Requête complète
       const r = await fetch(dlUrl, { headers: { Authorization: a.authorizationToken } });
       if (!r.ok) { res.status(r.status).json({ error: 'Fichier introuvable dans B2' }); return; }
-      const contentType = r.headers.get('content-type') || 'application/octet-stream';
+      const contentType   = r.headers.get('content-type')   || 'audio/mpeg';
+      const contentLength = r.headers.get('content-length') || '';
       const buf = Buffer.from(await r.arrayBuffer());
-      res.setHeader('Content-Type', contentType);
+      res.setHeader('Content-Type',  contentType);
+      res.setHeader('Accept-Ranges', 'bytes');
       res.setHeader('Cache-Control', 'public, max-age=86400');
+      if (contentLength) res.setHeader('Content-Length', contentLength);
       res.status(200).send(buf);
       return;
     }
