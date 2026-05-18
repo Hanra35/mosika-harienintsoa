@@ -633,49 +633,6 @@
 <!-- INDICATEUR SYNC -->
 <div id="sync-dot"><svg width="10" height="10" viewBox="0 0 24 24" fill="white"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg> Mise a jour...</div>
 <!-- BOTTOM WRAP : mini player + nav groupés en bas -->
-<div id="bottom-wrap">
-
-<!-- MINI PLAYER -->
-<div id="mini-player" onclick="openPlayer()">
-  <div class="mp-art" id="mp-art"></div>
-  <div class="mp-info"><p class="mp-name" id="mp-name">—</p><p class="mp-artist" id="mp-artist">—</p></div>
-  <button class="mp-btn" onclick="event.stopPropagation();goPrev()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
-  <button class="mp-play" onclick="event.stopPropagation();togglePlay()" id="mp-play"><svg id="mp-ico" width="18" height="18" viewBox="0 0 24 24" fill="var(--bg)"><path d="M8 5v14l11-7z"/></svg></button>
-  <button class="mp-btn" onclick="event.stopPropagation();goNext()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-  <div class="mp-prog"><div class="mp-prog-fill" id="mp-prog-fill" style="width:0%"></div></div>
-</div>
-
-<!-- BOTTOM NAV -->
-<div id="bottom-nav">
-  <button class="nav-item active" id="nav-home" onclick="gotoNav('home')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
-    <span class="nav-label">Accueil</span>
-  </button>
-  <button class="nav-item" id="nav-playlists" onclick="gotoNav('playlists')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
-    <span class="nav-label">Playlists</span>
-  </button>
-  <button class="nav-item" id="nav-artists" onclick="gotoNav('artists')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-    <span class="nav-label">Artistes</span>
-  </button>
-  <button class="nav-item" id="nav-import" onclick="gotoNav('import')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
-    <span class="nav-label">Importer</span>
-  </button>
-  <button class="nav-item" id="nav-storage" onclick="gotoNav('storage')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 9.5c0 .83-.67 1.5-1.5 1.5S11 13.33 11 12.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5zM19 19H5V5h14v14z"/></svg>
-    <span class="nav-label">Stockage</span>
-  </button>
-  <button class="nav-item" id="nav-discover" onclick="gotoNav('discover')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21.593 7.203a2.506 2.506 0 0 0-1.762-1.766C18.265 5.007 12 5 12 5s-6.264-.007-7.831.404a2.56 2.56 0 0 0-1.766 1.778c-.413 1.566-.417 4.814-.417 4.814s-.004 3.264.406 4.814c.23.857.905 1.534 1.763 1.765 1.582.43 7.83.437 7.83.437s6.265.007 7.831-.403a2.515 2.515 0 0 0 1.767-1.763c.414-1.565.417-4.812.417-4.812s.02-3.265-.407-4.831zM9.996 15.005l.005-6 5.207 3.005-5.212 2.995z"/></svg>
-    <span class="nav-label">Découvrir</span>
-  </button>
-  <button class="nav-item" id="nav-cached" onclick="gotoNav('cached-tracks')">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-    <span class="nav-label">Cache</span>
-  </button>
-</div>
 
 <div id="s-discover" class="screen hidden">
   <!-- Header -->
@@ -725,6 +682,51 @@
     </div>
   </div>
 </div>
+
+<div id="bottom-wrap">
+
+<!-- MINI PLAYER -->
+<div id="mini-player" onclick="openPlayer()">
+  <div class="mp-art" id="mp-art"></div>
+  <div class="mp-info"><p class="mp-name" id="mp-name">—</p><p class="mp-artist" id="mp-artist">—</p></div>
+  <button class="mp-btn" onclick="event.stopPropagation();goPrev()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+  <button class="mp-play" onclick="event.stopPropagation();togglePlay()" id="mp-play"><svg id="mp-ico" width="18" height="18" viewBox="0 0 24 24" fill="var(--bg)"><path d="M8 5v14l11-7z"/></svg></button>
+  <button class="mp-btn" onclick="event.stopPropagation();goNext()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+  <div class="mp-prog"><div class="mp-prog-fill" id="mp-prog-fill" style="width:0%"></div></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<div id="bottom-nav">
+  <button class="nav-item active" id="nav-home" onclick="gotoNav('home')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+    <span class="nav-label">Accueil</span>
+  </button>
+  <button class="nav-item" id="nav-playlists" onclick="gotoNav('playlists')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+    <span class="nav-label">Playlists</span>
+  </button>
+  <button class="nav-item" id="nav-artists" onclick="gotoNav('artists')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    <span class="nav-label">Artistes</span>
+  </button>
+  <button class="nav-item" id="nav-import" onclick="gotoNav('import')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>
+    <span class="nav-label">Importer</span>
+  </button>
+  <button class="nav-item" id="nav-storage" onclick="gotoNav('storage')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5C3.9 3 3 3.9 3 5v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 9.5c0 .83-.67 1.5-1.5 1.5S11 13.33 11 12.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5zM19 19H5V5h14v14z"/></svg>
+    <span class="nav-label">Stockage</span>
+  </button>
+  <button class="nav-item" id="nav-discover" onclick="gotoNav('discover')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21.593 7.203a2.506 2.506 0 0 0-1.762-1.766C18.265 5.007 12 5 12 5s-6.264-.007-7.831.404a2.56 2.56 0 0 0-1.766 1.778c-.413 1.566-.417 4.814-.417 4.814s-.004 3.264.406 4.814c.23.857.905 1.534 1.763 1.765 1.582.43 7.83.437 7.83.437s6.265.007 7.831-.403a2.515 2.515 0 0 0 1.767-1.763c.414-1.565.417-4.812.417-4.812s.02-3.265-.407-4.831zM9.996 15.005l.005-6 5.207 3.005-5.212 2.995z"/></svg>
+    <span class="nav-label">Découvrir</span>
+  </button>
+  <button class="nav-item" id="nav-cached" onclick="gotoNav('cached-tracks')">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+    <span class="nav-label">Cache</span>
+  </button>
+</div>
+
 </div><!-- /#bottom-wrap -->
 <!-- Player YouTube embed — hors de tout écran pour éviter les blocages iOS -->
 <div id="yt-embed-container" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;z-index:-999;overflow:hidden;">
@@ -1439,7 +1441,7 @@ function closePlayer(){
 function gotoNav(name){
   /* FIX: Si on quitte le player via la nav, restaurer le mini-player */
   if(cur!==null) document.getElementById('mini-player').classList.remove('hidden-in-player');
-  Object.keys(SCREENS).forEach(n=>{var el=document.getElementById(SCREENS[n]);if(!el) return;if(n===name){el.classList.remove('hidden','slide-left');}else{el.classList.remove('slide-left');el.classList.add('hidden');}});activeScreen=name;['home','playlists','artists','import','storage','cached-tracks'].forEach(n=>{var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});if(name==='home') renderHome();if(name==='playlists') renderPlScreen();if(name==='artists') renderArtists();if(name==='storage'){updateStorageDisplay();if(!bucketInfoLoaded) refreshBucketInfo();}if(name==='cached-tracks'){renderCachedTracks();updateStorageDisplay();}
+  Object.keys(SCREENS).forEach(n=>{var el=document.getElementById(SCREENS[n]);if(!el) return;if(n===name){el.classList.remove('hidden','slide-left');}else{el.classList.remove('slide-left');el.classList.add('hidden');}});activeScreen=name;['home','playlists','artists','import','storage','cached-tracks','discover'].forEach(n=>{var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});if(name==='home') renderHome();if(name==='playlists') renderPlScreen();if(name==='artists') renderArtists();if(name==='storage'){updateStorageDisplay();if(!bucketInfoLoaded) refreshBucketInfo();}if(name==='cached-tracks'){renderCachedTracks();updateStorageDisplay();}
 }
 
 /* CACHE DISABLED - STREAMING ONLY */
