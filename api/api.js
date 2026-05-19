@@ -216,133 +216,116 @@ module.exports = async (req, res) => {
       const q = req.query?.q || '';
       if (!q) { res.status(400).json({ error: 'Query manquante' }); return; }
 
-      const fetchT = (url, ms) => Promise.race([
-        fetch(url),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
-      ]);
+      // InnerTube — API interne de YouTube (aucune clé utilisateur requise)
+      const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+      const context = {
+        client: {
+          clientName: 'WEB', clientVersion: '2.20240101.00.00',
+          hl: 'fr', gl: 'MG', userAgent: 'Mozilla/5.0'
+        }
+      };
 
-      const PIPED = [
-        'https://pipedapi.kavin.rocks',
-        'https://pipedapi.tokhmi.xyz',
-        'https://piped-api.garudalinux.org',
-      ];
-      const INVIDIOUS = [
-        'https://inv.nadeko.net',
-        'https://invidious.privacydev.net',
-        'https://yt.cdaut.de',
-      ];
+      try {
+        const r = await fetch(
+          `https://www.youtube.com/youtubei/v1/search?key=${INNERTUBE_KEY}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ context, query: q })
+          }
+        );
+        if (!r.ok) throw new Error('YT search HTTP ' + r.status);
+        const data = await r.json();
 
-      for (const inst of PIPED) {
-        try {
-          const r = await fetchT(`${inst}/search?q=${encodeURIComponent(q)}&filter=videos`, 7000);
-          if (!r.ok) continue;
-          const data = await r.json();
-          const items = data?.items || [];
-          if (!items.length) continue;
-          const results = items.slice(0, 12)
-            .filter(v => v.url)
-            .map(v => ({
-              id:       (v.url || '').replace('/watch?v=', ''),
-              title:    v.title        || '',
-              artist:   v.uploaderName || '',
-              duration: v.duration     || 0,
-              thumb:    v.thumbnail    || ''
-            })).filter(v => v.id);
-          if (!results.length) continue;
-          res.status(200).json({ results });
-          return;
-        } catch(e) { continue; }
+        // Parcourt la réponse InnerTube pour extraire les vidéos
+        const results = [];
+        const sections = data?.contents
+          ?.twoColumnSearchResultsRenderer
+          ?.primaryContents
+          ?.sectionListRenderer
+          ?.contents || [];
+
+        for (const section of sections) {
+          const items = section?.itemSectionRenderer?.contents || [];
+          for (const item of items) {
+            const v = item?.videoRenderer;
+            if (!v || !v.videoId) continue;
+            const title  = v.title?.runs?.[0]?.text || '';
+            const artist = v.ownerText?.runs?.[0]?.text || v.shortBylineText?.runs?.[0]?.text || '';
+            const dur    = v.lengthText?.simpleText || '';
+            const secs   = dur ? dur.split(':').reduce((a,b) => a*60+parseInt(b), 0) : 0;
+            const thumb  = v.thumbnail?.thumbnails?.slice(-1)[0]?.url || '';
+            results.push({ id: v.videoId, title, artist, duration: secs, thumb });
+            if (results.length >= 12) break;
+          }
+          if (results.length >= 12) break;
+        }
+
+        res.status(200).json({ results });
+        return;
+      } catch(e) {
+        res.status(200).json({ results: [], error: e.message });
+        return;
       }
-
-      for (const inst of INVIDIOUS) {
-        try {
-          const r = await fetchT(
-            `${inst}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`,
-            7000
-          );
-          if (!r.ok) continue;
-          const data = await r.json();
-          if (!Array.isArray(data) || !data.length) continue;
-          const results = data.slice(0, 12).map(v => ({
-            id:       v.videoId,
-            title:    v.title,
-            artist:   v.author,
-            duration: v.lengthSeconds || 0,
-            thumb:    (v.videoThumbnails || []).find(t => t.quality === 'medium')?.url
-                   || (v.videoThumbnails || [])[0]?.url || ''
-          }));
-          res.status(200).json({ results });
-          return;
-        } catch(e) { continue; }
-      }
-
-      res.status(200).json({ results: [], error: 'Toutes les sources sont indisponibles' });
-      return;
     }
 
     if (action === 'yt-audio') {
       const videoId = req.query?.id || '';
       if (!videoId) { res.status(400).json({ error: 'ID manquant' }); return; }
 
-      const fetchT = (url, ms) => Promise.race([
-        fetch(url),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
-      ]);
+      // InnerTube client ANDROID → URLs audio directes non chiffrées
+      const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
+      const context = {
+        client: {
+          clientName: 'ANDROID', clientVersion: '17.31.35',
+          androidSdkVersion: 30, hl: 'fr', gl: 'MG',
+          userAgent: 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip'
+        }
+      };
 
-      const PIPED = [
-        'https://pipedapi.kavin.rocks',
-        'https://pipedapi.tokhmi.xyz',
-        'https://piped-api.garudalinux.org',
-      ];
-      const INVIDIOUS = [
-        'https://inv.nadeko.net',
-        'https://invidious.privacydev.net',
-        'https://yt.cdaut.de',
-      ];
+      try {
+        const r = await fetch(
+          `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip'
+            },
+            body: JSON.stringify({ context, videoId })
+          }
+        );
+        if (!r.ok) throw new Error('YT player HTTP ' + r.status);
+        const data = await r.json();
 
-      for (const inst of PIPED) {
-        try {
-          const r = await fetchT(`${inst}/streams/${videoId}`, 9000);
-          if (!r.ok) continue;
-          const data = await r.json();
-          if (data.error) continue;
-          const streams = (data.audioStreams || []).filter(s => s.url);
-          if (!streams.length) continue;
-          streams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-          const m4a  = streams.find(s => s.mimeType?.includes('m4a') || s.mimeType?.includes('mp4'));
-          const best = m4a || streams[0];
-          res.status(200).json({
-            url:    best.url,
-            type:   best.mimeType || 'audio/mp4',
-            title:  data.title    || '',
-            artist: data.uploader || ''
-          });
-          return;
-        } catch(e) { continue; }
+        if (data.playabilityStatus?.status !== 'OK') {
+          throw new Error(data.playabilityStatus?.reason || 'Vidéo non disponible');
+        }
+
+        const formats = (data.streamingData?.adaptiveFormats || [])
+          .filter(f => f.mimeType?.startsWith('audio/') && f.url);
+
+        if (!formats.length) throw new Error('Aucun stream audio trouvé');
+
+        // Préférer m4a/AAC pour iOS Safari
+        formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+        const m4a  = formats.find(f => f.mimeType?.includes('mp4') || f.mimeType?.includes('m4a'));
+        const best = m4a || formats[0];
+
+        const title  = data.videoDetails?.title  || '';
+        const artist = data.videoDetails?.author || '';
+
+        res.status(200).json({
+          url:    best.url,
+          type:   best.mimeType?.split(';')[0] || 'audio/mp4',
+          title,
+          artist
+        });
+        return;
+      } catch(e) {
+        res.status(503).json({ error: e.message });
+        return;
       }
-
-      for (const inst of INVIDIOUS) {
-        try {
-          const r = await fetchT(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,title,author`, 9000);
-          if (!r.ok) continue;
-          const data = await r.json();
-          if (!data || data.error) continue;
-          const audio = (data.adaptiveFormats || []).filter(f => f.type?.startsWith('audio/') && f.url);
-          if (!audio.length) continue;
-          const mp4a = audio.find(f => f.type?.includes('mp4a'));
-          const best = mp4a || audio[0];
-          res.status(200).json({
-            url:    best.url,
-            type:   best.type?.split(';')[0] || 'audio/mp4',
-            title:  data.title  || '',
-            artist: data.author || ''
-          });
-          return;
-        } catch(e) { continue; }
-      }
-
-      res.status(503).json({ error: 'Audio non disponible' });
-      return;
     }
 
     if (action === 'musixmatch') {
