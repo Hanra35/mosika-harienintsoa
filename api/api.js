@@ -215,61 +215,122 @@ module.exports = async (req, res) => {
     if (action === 'yt-search') {
       const q = req.query?.q || '';
       if (!q) { res.status(400).json({ error: 'Query manquante' }); return; }
-      const instances = [
-        'https://inv.nadeko.net',
-        'https://invidious.nerdvpn.de',
-        'https://yt.cdaut.de',
-        'https://iv.melmac.space'
+
+      const fetchT = (url, ms) => Promise.race([
+        fetch(url),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+      ]);
+
+      const PIPED = [
+        'https://pipedapi.kavin.rocks',
+        'https://pipedapi.tokhmi.xyz',
+        'https://piped-api.garudalinux.org',
       ];
-      for (const inst of instances) {
+      const INVIDIOUS = [
+        'https://inv.nadeko.net',
+        'https://invidious.privacydev.net',
+        'https://yt.cdaut.de',
+      ];
+
+      for (const inst of PIPED) {
         try {
-          const r = await fetch(
-            `${inst}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`,
-            { signal: AbortSignal.timeout(6000) }
-          );
+          const r = await fetchT(`${inst}/search?q=${encodeURIComponent(q)}&filter=videos`, 7000);
           if (!r.ok) continue;
           const data = await r.json();
-          if (!Array.isArray(data)) continue;
-          const results = data.slice(0, 12).map(v => ({
-            id: v.videoId,
-            title: v.title,
-            artist: v.author,
-            duration: v.lengthSeconds || 0,
-            thumb: (v.videoThumbnails || []).find(t => t.quality === 'medium')?.url
-                || (v.videoThumbnails || [])[0]?.url || ''
-          }));
-          res.status(200).json({ results, instance: inst });
+          const items = data?.items || [];
+          if (!items.length) continue;
+          const results = items.slice(0, 12)
+            .filter(v => v.url)
+            .map(v => ({
+              id:       (v.url || '').replace('/watch?v=', ''),
+              title:    v.title        || '',
+              artist:   v.uploaderName || '',
+              duration: v.duration     || 0,
+              thumb:    v.thumbnail    || ''
+            })).filter(v => v.id);
+          if (!results.length) continue;
+          res.status(200).json({ results });
           return;
         } catch(e) { continue; }
       }
-      res.status(200).json({ results: [], error: 'Instances indisponibles' });
+
+      for (const inst of INVIDIOUS) {
+        try {
+          const r = await fetchT(
+            `${inst}/api/v1/search?q=${encodeURIComponent(q)}&type=video&fields=videoId,title,author,lengthSeconds,videoThumbnails`,
+            7000
+          );
+          if (!r.ok) continue;
+          const data = await r.json();
+          if (!Array.isArray(data) || !data.length) continue;
+          const results = data.slice(0, 12).map(v => ({
+            id:       v.videoId,
+            title:    v.title,
+            artist:   v.author,
+            duration: v.lengthSeconds || 0,
+            thumb:    (v.videoThumbnails || []).find(t => t.quality === 'medium')?.url
+                   || (v.videoThumbnails || [])[0]?.url || ''
+          }));
+          res.status(200).json({ results });
+          return;
+        } catch(e) { continue; }
+      }
+
+      res.status(200).json({ results: [], error: 'Toutes les sources sont indisponibles' });
       return;
     }
 
     if (action === 'yt-audio') {
       const videoId = req.query?.id || '';
       if (!videoId) { res.status(400).json({ error: 'ID manquant' }); return; }
-      const instances = [
-        'https://inv.nadeko.net',
-        'https://invidious.nerdvpn.de',
-        'https://yt.cdaut.de',
-        'https://iv.melmac.space'
+
+      const fetchT = (url, ms) => Promise.race([
+        fetch(url),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+      ]);
+
+      const PIPED = [
+        'https://pipedapi.kavin.rocks',
+        'https://pipedapi.tokhmi.xyz',
+        'https://piped-api.garudalinux.org',
       ];
-      for (const inst of instances) {
+      const INVIDIOUS = [
+        'https://inv.nadeko.net',
+        'https://invidious.privacydev.net',
+        'https://yt.cdaut.de',
+      ];
+
+      for (const inst of PIPED) {
         try {
-          const r = await fetch(
-            `${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,title,author`,
-            { signal: AbortSignal.timeout(8000) }
-          );
+          const r = await fetchT(`${inst}/streams/${videoId}`, 9000);
+          if (!r.ok) continue;
+          const data = await r.json();
+          if (data.error) continue;
+          const streams = (data.audioStreams || []).filter(s => s.url);
+          if (!streams.length) continue;
+          streams.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+          const m4a  = streams.find(s => s.mimeType?.includes('m4a') || s.mimeType?.includes('mp4'));
+          const best = m4a || streams[0];
+          res.status(200).json({
+            url:    best.url,
+            type:   best.mimeType || 'audio/mp4',
+            title:  data.title    || '',
+            artist: data.uploader || ''
+          });
+          return;
+        } catch(e) { continue; }
+      }
+
+      for (const inst of INVIDIOUS) {
+        try {
+          const r = await fetchT(`${inst}/api/v1/videos/${videoId}?fields=adaptiveFormats,title,author`, 9000);
           if (!r.ok) continue;
           const data = await r.json();
           if (!data || data.error) continue;
-          const audioFormats = (data.adaptiveFormats || []).filter(f => f.type?.startsWith('audio/') && f.url);
-          if (!audioFormats.length) continue;
-          // Préférer mp4a/AAC (meilleure compatibilité iOS Safari)
-          const mp4a = audioFormats.find(f => f.type?.includes('mp4a'));
-          const opus = audioFormats.find(f => f.type?.includes('opus'));
-          const best = mp4a || opus || audioFormats[0];
+          const audio = (data.adaptiveFormats || []).filter(f => f.type?.startsWith('audio/') && f.url);
+          if (!audio.length) continue;
+          const mp4a = audio.find(f => f.type?.includes('mp4a'));
+          const best = mp4a || audio[0];
           res.status(200).json({
             url:    best.url,
             type:   best.type?.split(';')[0] || 'audio/mp4',
@@ -279,7 +340,8 @@ module.exports = async (req, res) => {
           return;
         } catch(e) { continue; }
       }
-      res.status(503).json({ error: 'Audio non disponible sur toutes les instances' });
+
+      res.status(503).json({ error: 'Audio non disponible' });
       return;
     }
 
