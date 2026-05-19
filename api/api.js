@@ -212,55 +212,6 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (action === 'yt-debug') {
-      // Endpoint temporaire pour diagnostiquer le problème YouTube
-      const q = req.query?.q || 'test';
-      const results = {};
-      
-      // Test 1: InnerTube WEB
-      try {
-        const r = await fetch('https://www.youtube.com/youtubei/v1/search?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'fr' } },
-            query: q
-          })
-        });
-        results.web_status = r.status;
-        const txt = await r.text();
-        results.web_response_length = txt.length;
-        results.web_preview = txt.substring(0, 200);
-      } catch(e) { results.web_error = e.message; }
-
-      // Test 2: InnerTube ANDROID
-      try {
-        const r = await fetch('https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip' },
-          body: JSON.stringify({
-            context: { client: { clientName: 'ANDROID', clientVersion: '17.31.35', androidSdkVersion: 30 } },
-            videoId: 'dQw4w9WgXcQ'
-          })
-        });
-        results.android_status = r.status;
-        const txt = await r.text();
-        results.android_response_length = txt.length;
-        results.android_preview = txt.substring(0, 200);
-      } catch(e) { results.android_error = e.message; }
-
-      // Test 3: Piped
-      try {
-        const r = await fetch('https://pipedapi.kavin.rocks/search?q=test&filter=videos');
-        results.piped_status = r.status;
-        const txt = await r.text();
-        results.piped_preview = txt.substring(0, 200);
-      } catch(e) { results.piped_error = e.message; }
-
-      res.status(200).json(results);
-      return;
-    }
-
     if (action === 'yt-search') {
       const q = req.query?.q || '';
       if (!q) { res.status(400).json({ error: 'Query manquante' }); return; }
@@ -269,60 +220,41 @@ module.exports = async (req, res) => {
 
       try {
         const r = await fetch(
-          `https://www.youtube.com/youtubei/v1/search?key=${INNERTUBE_KEY}&prettyPrint=false`,
+          `https://www.youtube.com/youtubei/v1/search?key=${INNERTUBE_KEY}`,
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-YouTube-Client-Name': '1',
-              'X-YouTube-Client-Version': '2.20240101.00.00',
-              'Origin': 'https://www.youtube.com',
-              'Referer': 'https://www.youtube.com/',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              context: {
-                client: {
-                  clientName: 'WEB',
-                  clientVersion: '2.20240101.00.00',
-                  hl: 'fr', gl: 'MG'
-                }
-              },
-              query: q,
-              params: 'EgIQAQ%3D%3D' // filter: videos only
+              context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'fr', gl: 'MG' } },
+              query: q
             })
           }
         );
-
-        if (!r.ok) {
-          res.status(200).json({ results: [], error: `YouTube HTTP ${r.status}` });
-          return;
-        }
-
+        if (!r.ok) throw new Error('HTTP ' + r.status);
         const data = await r.json();
 
-        // Extraire les vidéos — plusieurs structures possibles selon la réponse
+        // Recherche récursive de tous les videoRenderer dans la réponse
         const results = [];
-
-        // Fonction qui cherche récursivement les videoRenderer
-        function extractVideos(obj, depth = 0) {
-          if (!obj || typeof obj !== 'object' || depth > 8) return;
+        const findVideos = (obj) => {
+          if (!obj || typeof obj !== 'object' || results.length >= 12) return;
           if (obj.videoRenderer && obj.videoRenderer.videoId) {
             const v = obj.videoRenderer;
             const title  = v.title?.runs?.[0]?.text || v.title?.simpleText || '';
-            const artist = v.ownerText?.runs?.[0]?.text || v.shortBylineText?.runs?.[0]?.text || '';
-            const durTxt = v.lengthText?.simpleText || v.lengthText?.accessibility?.accessibilityData?.label || '';
-            const secs   = durTxt.split(':').reverse().reduce((acc, v, i) => acc + parseInt(v||0) * Math.pow(60, i), 0);
+            const artist = v.ownerText?.runs?.[0]?.text
+                        || v.shortBylineText?.runs?.[0]?.text || '';
+            const durTxt = v.lengthText?.simpleText || v.lengthText?.runs?.[0]?.text || '';
+            const secs   = durTxt ? durTxt.split(':').reduce((a,b) => a*60+parseInt(b), 0) : 0;
             const thumbs = v.thumbnail?.thumbnails || [];
-            const thumb  = thumbs.find(t => t.width >= 300)?.url || thumbs.slice(-1)[0]?.url || '';
+            const thumb  = thumbs[thumbs.length-1]?.url || '';
             if (title) results.push({ id: v.videoId, title, artist, duration: secs, thumb });
             return;
           }
-          if (Array.isArray(obj)) { obj.forEach(i => extractVideos(i, depth+1)); return; }
-          Object.values(obj).forEach(v => extractVideos(v, depth+1));
-        }
+          if (Array.isArray(obj)) { obj.forEach(findVideos); return; }
+          Object.values(obj).forEach(findVideos);
+        };
+        findVideos(data);
 
-        extractVideos(data);
-        res.status(200).json({ results: results.slice(0, 12) });
+        res.status(200).json({ results });
         return;
       } catch(e) {
         res.status(200).json({ results: [], error: e.message });
@@ -334,59 +266,67 @@ module.exports = async (req, res) => {
       const videoId = req.query?.id || '';
       if (!videoId) { res.status(400).json({ error: 'ID manquant' }); return; }
 
-      // InnerTube client ANDROID → URLs audio directes non chiffrées
       const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
-      const context = {
-        client: {
-          clientName: 'ANDROID', clientVersion: '17.31.35',
-          androidSdkVersion: 30, hl: 'fr', gl: 'MG',
-          userAgent: 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip'
+
+      // Essaie plusieurs clients InnerTube — ANDROID bloqué par Vercel
+      const clients = [
+        {
+          name: 'TVHTML5',
+          context: { client: { clientName: 'TVHTML5', clientVersion: '7.20240101.18.00', hl: 'fr', gl: 'MG' } },
+          headers: {}
+        },
+        {
+          name: 'IOS',
+          context: { client: {
+            clientName: 'IOS', clientVersion: '17.33.2',
+            deviceMake: 'Apple', deviceModel: 'iPhone16,2',
+            userAgent: 'com.google.ios.youtube/17.33.2 (iPhone16,2; U; CPU iOS 17_0 like Mac OS X)',
+            osName: 'iPhone', osVersion: '17.0.0', hl: 'fr', gl: 'MG'
+          }},
+          headers: { 'User-Agent': 'com.google.ios.youtube/17.33.2 (iPhone16,2; U; CPU iOS 17_0 like Mac OS X)' }
+        },
+        {
+          name: 'WEB_CREATOR',
+          context: { client: { clientName: 'WEB_CREATOR', clientVersion: '1.20240101.00.00', hl: 'fr', gl: 'MG' } },
+          headers: {}
         }
-      };
+      ];
 
-      try {
-        const r = await fetch(
-          `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip'
-            },
-            body: JSON.stringify({ context, videoId })
-          }
-        );
-        if (!r.ok) throw new Error('YT player HTTP ' + r.status);
-        const data = await r.json();
+      for (const c of clients) {
+        try {
+          const r = await fetch(
+            `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...c.headers },
+              body: JSON.stringify({ context: c.context, videoId })
+            }
+          );
+          if (!r.ok) continue;
+          const data = await r.json();
+          if (data.playabilityStatus?.status !== 'OK') continue;
 
-        if (data.playabilityStatus?.status !== 'OK') {
-          throw new Error(data.playabilityStatus?.reason || 'Vidéo non disponible');
-        }
+          const formats = (data.streamingData?.adaptiveFormats || [])
+            .filter(f => f.mimeType?.startsWith('audio/') && f.url);
+          if (!formats.length) continue;
 
-        const formats = (data.streamingData?.adaptiveFormats || [])
-          .filter(f => f.mimeType?.startsWith('audio/') && f.url);
+          formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+          const m4a  = formats.find(f => f.mimeType?.includes('mp4') || f.mimeType?.includes('m4a'));
+          const best = m4a || formats[0];
 
-        if (!formats.length) throw new Error('Aucun stream audio trouvé');
-
-        // Préférer m4a/AAC pour iOS Safari
-        formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-        const m4a  = formats.find(f => f.mimeType?.includes('mp4') || f.mimeType?.includes('m4a'));
-        const best = m4a || formats[0];
-
-        const title  = data.videoDetails?.title  || '';
-        const artist = data.videoDetails?.author || '';
-
-        res.status(200).json({
-          url:    best.url,
-          type:   best.mimeType?.split(';')[0] || 'audio/mp4',
-          title,
-          artist
-        });
-        return;
-      } catch(e) {
-        res.status(503).json({ error: e.message });
-        return;
+          res.status(200).json({
+            url:    best.url,
+            type:   best.mimeType?.split(';')[0] || 'audio/mp4',
+            title:  data.videoDetails?.title  || '',
+            artist: data.videoDetails?.author || '',
+            client: c.name
+          });
+          return;
+        } catch(e) { continue; }
       }
+
+      res.status(503).json({ error: 'Audio non disponible' });
+      return;
     }
 
     if (action === 'musixmatch') {
