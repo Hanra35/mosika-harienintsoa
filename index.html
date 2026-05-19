@@ -225,7 +225,7 @@
     .player-head{display:flex;align-items:center;justify-content:space-between;padding:0 20px;}
     .player-head-title{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:1.2px;text-transform:uppercase;}
     .player-close{background:var(--card);border:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
-    .player-scroll{flex:1;overflow-y:auto;padding-bottom:20px;-webkit-overflow-scrolling:touch;}
+    .player-scroll{flex:1;overflow-y:auto;padding-bottom:var(--scroll-pb);-webkit-overflow-scrolling:touch;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
     .player-art-wrap{padding:22px 30px 16px;display:flex;justify-content:center;}
     .player-art{width:100%;max-width:300px;aspect-ratio:1/1;border-radius:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 24px 64px rgba(0,0,0,.32);overflow:hidden;background:#1a2235;background-size:cover;background-position:center;}
     .player-art.pulse{animation:artpulse .5s ease;}
@@ -250,12 +250,12 @@
     .player-vol{display:flex;align-items:center;padding:4px 26px 14px;}
     .player-vol svg{color:var(--sub);flex-shrink:0;}
     /* ── LYRICS ── */
-    .lyrics-section{padding:0 20px 30px;}
+    .lyrics-section{padding:0 20px 16px;}
     .lyrics-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
-    .lyrics-title{font-size:12px;font-weight:700;color:var(--sub);letter-spacing:.08em;text-transform:uppercase;}
+    .lyrics-title{font-size:13px;font-weight:800;color:var(--sub);letter-spacing:.12em;text-transform:uppercase;}
     .lyrics-edit-btn{background:var(--card2);border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--sub);}
-    .lyrics-container{position:relative;max-height:280px;overflow:hidden;mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 80%,transparent 100%);-webkit-mask-image:linear-gradient(to bottom,transparent 0%,black 12%,black 80%,transparent 100%);}
-    .lyrics-scroll{overflow-y:auto;max-height:280px;scroll-behavior:smooth;padding:30px 0;}
+    .lyrics-container{position:relative;}
+    .lyrics-scroll{padding:0 4px;}
     .lrc-line{font-size:18px;font-weight:600;color:var(--sub);line-height:1.6;padding:6px 0;transition:color .3s,transform .3s,font-size .3s;transform-origin:left center;opacity:.45;cursor:pointer;}
     .lrc-line.active{color:var(--text);font-size:22px;opacity:1;transform:scale(1.03);}
     .lrc-line.past{opacity:.3;}
@@ -556,6 +556,7 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sub)"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
     </div>
     <!-- PAROLES SYNCHRONISÉES -->
+    <div style="margin:8px 20px 0;height:1px;background:var(--border);border-radius:1px;"></div>
     <div class="lyrics-section">
       <div class="lyrics-header">
         <span class="lyrics-title">Paroles</span>
@@ -1211,13 +1212,16 @@ function updateLyricsSync(ct){
     el.classList.toggle('active',i===newIdx);
     el.classList.toggle('past',i<newIdx);
   });
-  // Scroll auto vers la ligne active
-  if(newIdx>=0&&container){
+  // Scroll auto vers la ligne active — utilise player-scroll maintenant
+  if(newIdx>=0){
     var activeLine=document.getElementById('lrc-'+newIdx);
-    if(activeLine){
-      var lineTop=activeLine.offsetTop;
-      var targetScroll=lineTop-container.clientHeight/2+activeLine.clientHeight/2;
-      container.scrollTo({top:Math.max(0,targetScroll),behavior:'smooth'});
+    var playerScroll=document.querySelector('.player-scroll');
+    if(activeLine&&playerScroll){
+      var lineTop=activeLine.getBoundingClientRect().top;
+      var scrollTop=playerScroll.scrollTop;
+      var containerTop=playerScroll.getBoundingClientRect().top;
+      var target=scrollTop+(lineTop-containerTop)-playerScroll.clientHeight/2+activeLine.clientHeight/2;
+      playerScroll.scrollTo({top:Math.max(0,target),behavior:'smooth'});
     }
   }
 }
