@@ -212,56 +212,117 @@ module.exports = async (req, res) => {
       return;
     }
 
+    if (action === 'yt-debug') {
+      // Endpoint temporaire pour diagnostiquer le problème YouTube
+      const q = req.query?.q || 'test';
+      const results = {};
+      
+      // Test 1: InnerTube WEB
+      try {
+        const r = await fetch('https://www.youtube.com/youtubei/v1/search?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'fr' } },
+            query: q
+          })
+        });
+        results.web_status = r.status;
+        const txt = await r.text();
+        results.web_response_length = txt.length;
+        results.web_preview = txt.substring(0, 200);
+      } catch(e) { results.web_error = e.message; }
+
+      // Test 2: InnerTube ANDROID
+      try {
+        const r = await fetch('https://www.youtube.com/youtubei/v1/player?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip' },
+          body: JSON.stringify({
+            context: { client: { clientName: 'ANDROID', clientVersion: '17.31.35', androidSdkVersion: 30 } },
+            videoId: 'dQw4w9WgXcQ'
+          })
+        });
+        results.android_status = r.status;
+        const txt = await r.text();
+        results.android_response_length = txt.length;
+        results.android_preview = txt.substring(0, 200);
+      } catch(e) { results.android_error = e.message; }
+
+      // Test 3: Piped
+      try {
+        const r = await fetch('https://pipedapi.kavin.rocks/search?q=test&filter=videos');
+        results.piped_status = r.status;
+        const txt = await r.text();
+        results.piped_preview = txt.substring(0, 200);
+      } catch(e) { results.piped_error = e.message; }
+
+      res.status(200).json(results);
+      return;
+    }
+
     if (action === 'yt-search') {
       const q = req.query?.q || '';
       if (!q) { res.status(400).json({ error: 'Query manquante' }); return; }
 
-      // InnerTube — API interne de YouTube (aucune clé utilisateur requise)
       const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
-      const context = {
-        client: {
-          clientName: 'WEB', clientVersion: '2.20240101.00.00',
-          hl: 'fr', gl: 'MG', userAgent: 'Mozilla/5.0'
-        }
-      };
 
       try {
         const r = await fetch(
-          `https://www.youtube.com/youtubei/v1/search?key=${INNERTUBE_KEY}`,
+          `https://www.youtube.com/youtubei/v1/search?key=${INNERTUBE_KEY}&prettyPrint=false`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ context, query: q })
+            headers: {
+              'Content-Type': 'application/json',
+              'X-YouTube-Client-Name': '1',
+              'X-YouTube-Client-Version': '2.20240101.00.00',
+              'Origin': 'https://www.youtube.com',
+              'Referer': 'https://www.youtube.com/',
+            },
+            body: JSON.stringify({
+              context: {
+                client: {
+                  clientName: 'WEB',
+                  clientVersion: '2.20240101.00.00',
+                  hl: 'fr', gl: 'MG'
+                }
+              },
+              query: q,
+              params: 'EgIQAQ%3D%3D' // filter: videos only
+            })
           }
         );
-        if (!r.ok) throw new Error('YT search HTTP ' + r.status);
-        const data = await r.json();
 
-        // Parcourt la réponse InnerTube pour extraire les vidéos
-        const results = [];
-        const sections = data?.contents
-          ?.twoColumnSearchResultsRenderer
-          ?.primaryContents
-          ?.sectionListRenderer
-          ?.contents || [];
-
-        for (const section of sections) {
-          const items = section?.itemSectionRenderer?.contents || [];
-          for (const item of items) {
-            const v = item?.videoRenderer;
-            if (!v || !v.videoId) continue;
-            const title  = v.title?.runs?.[0]?.text || '';
-            const artist = v.ownerText?.runs?.[0]?.text || v.shortBylineText?.runs?.[0]?.text || '';
-            const dur    = v.lengthText?.simpleText || '';
-            const secs   = dur ? dur.split(':').reduce((a,b) => a*60+parseInt(b), 0) : 0;
-            const thumb  = v.thumbnail?.thumbnails?.slice(-1)[0]?.url || '';
-            results.push({ id: v.videoId, title, artist, duration: secs, thumb });
-            if (results.length >= 12) break;
-          }
-          if (results.length >= 12) break;
+        if (!r.ok) {
+          res.status(200).json({ results: [], error: `YouTube HTTP ${r.status}` });
+          return;
         }
 
-        res.status(200).json({ results });
+        const data = await r.json();
+
+        // Extraire les vidéos — plusieurs structures possibles selon la réponse
+        const results = [];
+
+        // Fonction qui cherche récursivement les videoRenderer
+        function extractVideos(obj, depth = 0) {
+          if (!obj || typeof obj !== 'object' || depth > 8) return;
+          if (obj.videoRenderer && obj.videoRenderer.videoId) {
+            const v = obj.videoRenderer;
+            const title  = v.title?.runs?.[0]?.text || v.title?.simpleText || '';
+            const artist = v.ownerText?.runs?.[0]?.text || v.shortBylineText?.runs?.[0]?.text || '';
+            const durTxt = v.lengthText?.simpleText || v.lengthText?.accessibility?.accessibilityData?.label || '';
+            const secs   = durTxt.split(':').reverse().reduce((acc, v, i) => acc + parseInt(v||0) * Math.pow(60, i), 0);
+            const thumbs = v.thumbnail?.thumbnails || [];
+            const thumb  = thumbs.find(t => t.width >= 300)?.url || thumbs.slice(-1)[0]?.url || '';
+            if (title) results.push({ id: v.videoId, title, artist, duration: secs, thumb });
+            return;
+          }
+          if (Array.isArray(obj)) { obj.forEach(i => extractVideos(i, depth+1)); return; }
+          Object.values(obj).forEach(v => extractVideos(v, depth+1));
+        }
+
+        extractVideos(data);
+        res.status(200).json({ results: results.slice(0, 12) });
         return;
       } catch(e) {
         res.status(200).json({ results: [], error: e.message });
