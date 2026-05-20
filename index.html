@@ -1289,11 +1289,7 @@ function updateLyricsSync(ct){
     var activeLine=document.getElementById('lrc-'+newIdx);
     var lyricsScroll=document.querySelector('.p-lyrics-full-card .lyrics-scroll');
     if(activeLine&&lyricsScroll&&!lyricsScroll._userScrolling){
-      var lyricsLines=document.getElementById('lyrics-lines');
-      var containerOffset=lyricsLines?lyricsLines.offsetTop:0;
-      var lineTop=activeLine.offsetTop+containerOffset;
-      var target=lineTop-lyricsScroll.clientHeight/2+activeLine.clientHeight/2;
-      lyricsScroll.scrollTo({top:Math.max(0,target),behavior:'smooth'});
+      activeLine.scrollIntoView({block:'center',behavior:'smooth'});
     }
   }
 }
@@ -2414,10 +2410,7 @@ function expandLyrics(){
     var activeLine = document.getElementById('lrc-'+activeIdx);
     var lyricsScroll = document.querySelector('.p-lyrics-full-card .lyrics-scroll');
     if(activeLine && lyricsScroll){
-      var lyricsLines2=document.getElementById('lyrics-lines');
-      var containerOffset2=lyricsLines2?lyricsLines2.offsetTop:0;
-      var target = activeLine.offsetTop + containerOffset2 - lyricsScroll.clientHeight/2 + activeLine.clientHeight/2;
-      lyricsScroll.scrollTop = Math.max(0, target);
+      activeLine.scrollIntoView({block:'center',behavior:'instant'});
     }
     // Aussi scroller le player pour montrer les paroles
     var playerScroll = document.getElementById('player-scroll-el');
