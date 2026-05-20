@@ -230,9 +230,9 @@
     .p-card-action{font-size:13px;font-weight:600;color:var(--acc);cursor:pointer;}
     .p-card-close{background:transparent;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0;}
     /* Lyrics preview lines */
-    .lp-line{font-size:16px;font-weight:500;color:rgba(255,255,255,.35);line-height:1.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .3s;}
-    .lp-line.active{font-size:19px;font-weight:800;color:#fff;white-space:normal;}
-    .lp-line.near{color:rgba(255,255,255,.6);}
+    .lp-line{font-size:16px;font-weight:500;color:rgba(255,255,255,.3);line-height:1.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .25s ease,font-size .25s ease,font-weight .25s ease;}
+    .lp-line.active{font-size:20px;font-weight:800;color:#fff;white-space:normal;text-shadow:0 0 24px rgba(45,126,248,.5);}
+    .lp-line.near{color:rgba(255,255,255,.55);font-size:17px;}
     /* Full lyrics inside card */
     .p-lyrics-full-card .lyrics-scroll{max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
     /* Artist & up next mini lists */
@@ -256,7 +256,7 @@
     .player-head{display:flex;align-items:center;justify-content:space-between;padding:0 20px;}
     .player-head-title{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:1.2px;text-transform:uppercase;}
     .player-close{background:var(--card);border:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
-    .player-scroll{flex:1;overflow-y:auto;padding-bottom:var(--scroll-pb);-webkit-overflow-scrolling:touch;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;}
+    .player-scroll{flex:1;overflow-y:auto;padding-bottom:var(--scroll-pb);-webkit-overflow-scrolling:touch;scroll-behavior:smooth;touch-action:pan-y;overscroll-behavior:contain;}
     .player-art-wrap{padding:22px 30px 16px;display:flex;justify-content:center;}
     .player-art{width:100%;max-width:300px;aspect-ratio:1/1;border-radius:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 24px 64px rgba(0,0,0,.32);overflow:hidden;background:#1a2235;background-size:cover;background-position:center;}
     .player-art.pulse{animation:artpulse .5s ease;}
@@ -590,11 +590,11 @@
     </div>
 
     <!-- ⑥ LYRICS PREVIEW CARD -->
-    <div class="p-card" id="p-lyrics-card" onclick="expandLyrics()">
+    <div class="p-card" id="p-lyrics-card">
       <div class="p-card-head">
         <span class="p-card-icon">🎵</span>
         <span class="p-card-title">Paroles</span>
-        <span class="p-card-action" id="p-lyrics-action">Voir tout</span>
+        <span class="p-card-action" id="p-lyrics-action" onclick="expandLyrics()">Voir tout</span>
       </div>
       <div id="p-lyrics-preview"></div>
     </div>
@@ -1263,7 +1263,7 @@ function loadLyricsForTrack(){
     return;
   }
   el.innerHTML=lrcLines.map((l,i)=>`<div class="lrc-line" id="lrc-${i}" onclick="aud.currentTime=${l.time}">${esc(l.text)}</div>`).join('');
-  renderLyricsPreview();
+  buildLyricsPreview();
 }
 
 function updateLyricsSync(ct){
@@ -2278,27 +2278,49 @@ function applyPlayerColor(rgb){
   pl.style.background = 'linear-gradient(180deg,rgb('+dr+','+dg+','+db+') 0%,#0B0E18 55%)';
 }
 
-/* ── Lyrics preview (3 lignes autour de l'active) ── */
-function renderLyricsPreview(){
+/* ── Lyrics preview — rendu stable, mise à jour de classes seulement ── */
+var _lyricsPreviewBuilt = false;
+function buildLyricsPreview(){
   var el = document.getElementById('p-lyrics-preview');
   if(!el) return;
+  _lyricsPreviewBuilt = false;
   if(!lrcLines.length){
     var t = cur!==null?tracks[cur]:null;
     if(t&&t.lrc&&t.lrc.trim().length>5){
-      el.innerHTML = t.lrc.trim().split('\n').slice(0,3).map(l=>
+      el.innerHTML = t.lrc.trim().split('\n').slice(0,4).map(l=>
         '<p class="lp-line near">'+esc(l||'')+'</p>').join('');
     } else {
-      el.innerHTML = '<p style="color:var(--sub);font-size:13px;">Aucune parole — appuie pour ajouter</p>';
+      el.innerHTML = '<p style="color:var(--sub);font-size:13px;padding:4px 0;">Aucune parole — appuie "Voir tout" pour en ajouter</p>';
     }
     return;
   }
-  var idx = lrcActiveIdx >= 0 ? lrcActiveIdx : 0;
-  var lines = [];
-  for(var i=Math.max(0,idx-1); i<Math.min(lrcLines.length,idx+4); i++){
-    var cls = i===idx ? 'active' : (Math.abs(i-idx)===1 ? 'near' : '');
-    lines.push('<p class="lp-line '+cls+'">'+esc(lrcLines[i].text||'')+'</p>');
+  // Pré-rend toutes les lignes, on mettra à jour les classes seulement
+  el.innerHTML = lrcLines.map((l,i)=>
+    '<p class="lp-line" id="lp-'+i+'">'+esc(l.text||'')+'</p>'
+  ).join('');
+  _lyricsPreviewBuilt = true;
+  updateLyricsPreviewClasses();
+}
+function updateLyricsPreviewClasses(){
+  if(!_lyricsPreviewBuilt) return;
+  var idx = lrcActiveIdx>=0 ? lrcActiveIdx : -1;
+  lrcLines.forEach((_,i)=>{
+    var el = document.getElementById('lp-'+i);
+    if(!el) return;
+    // Show only lines near active, hide others
+    var dist = Math.abs(i - idx);
+    if(idx < 0){ el.style.display = i<4?'block':'none'; el.className='lp-line near'; return; }
+    if(dist > 3){ el.style.display='none'; return; }
+    el.style.display = 'block';
+    el.className = 'lp-line' + (i===idx?' active':(dist===1?' near':''));
+  });
+}
+function renderLyricsPreview(){
+  if(_lyricsPreviewBuilt){
+    updateLyricsPreviewClasses();
+  } else {
+    buildLyricsPreview();
   }
-  el.innerHTML = lines.join('');
 }
 
 /* ── Artist section ── */
@@ -2365,6 +2387,22 @@ function expandLyrics(){
   document.getElementById('p-lyrics-card').style.display='none';
   document.getElementById('p-lyrics-full-card').style.display='block';
   renderLrcLines();
+  // Scroll vers la ligne active immédiatement
+  requestAnimationFrame(function(){
+    var activeIdx = lrcActiveIdx >= 0 ? lrcActiveIdx : 0;
+    var activeLine = document.getElementById('lrc-'+activeIdx);
+    var lyricsScroll = document.querySelector('.p-lyrics-full-card .lyrics-scroll');
+    if(activeLine && lyricsScroll){
+      var target = activeLine.offsetTop - lyricsScroll.clientHeight/3;
+      lyricsScroll.scrollTop = Math.max(0, target);
+    }
+    // Aussi scroller le player pour montrer les paroles
+    var playerScroll = document.getElementById('player-scroll-el');
+    var fullCard = document.getElementById('p-lyrics-full-card');
+    if(playerScroll && fullCard){
+      playerScroll.scrollTo({top: fullCard.offsetTop - 20, behavior:'smooth'});
+    }
+  });
 }
 function collapseLyrics(){
   document.getElementById('p-lyrics-full-card').style.display='none';
@@ -2398,12 +2436,12 @@ function updatePlayerScreen(){
   pa2.onclick=function(){openArtistByName(t.artist);};
   document.querySelector('#like-btn svg').style.fill=liked.has(t.id)?'#ff4d4d':'var(--sub)';
   updatePlayBtns();
+  _lyricsPreviewBuilt = false;
   loadLyricsForTrack();
   renderPlayerArtist();
   renderPlayerUpNext();
-  // Reset lyrics view
   collapseLyrics();
-  renderLyricsPreview();
+  buildLyricsPreview();
 }
 
 /* ═══════════════════════════════════════════════════════════
