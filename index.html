@@ -1263,18 +1263,28 @@ function loadLyricsForTrack(){
   if(!el) return;
   lrcLines=t&&t.lrc?parseLRC(t.lrc):[];
   lrcActiveIdx=-1;
+  var previewEl=document.getElementById('p-lyrics-preview');
+  var lyricsCard=document.getElementById('p-lyrics-card');
   if(!lrcLines.length){
     if(t&&t.lrc&&t.lrc.trim().length>5){
-      // Paroles plain sans timestamps — affichage statique
-      el.innerHTML=t.lrc.trim().split('\n').map(line=>
-        `<div class="lrc-line" style="opacity:0.85;font-size:16px;cursor:default;">${esc(line)||'&nbsp;'}</div>`
+      // Paroles plain sans timestamps — affichage statique dans les deux zones
+      var plainLines=t.lrc.trim().split('\n');
+      el.innerHTML=plainLines.map(line=>
+        `<div class="lrc-line" style="opacity:0.85;cursor:default;">${esc(line)||'&nbsp;'}</div>`
       ).join('');
+      // Aussi dans l'aperçu
+      if(previewEl) previewEl.innerHTML=plainLines.slice(0,4).map(line=>
+        '<p class="lp-line near">'+esc(line||'')+'</p>'
+      ).join('');
+      if(lyricsCard) lyricsCard.style.display='block';
     } else {
       el.innerHTML='<div class="lyrics-empty">Aucune parole.<br>Appuie sur <b>Modifier</b> pour en ajouter.</div>';
+      if(lyricsCard) lyricsCard.style.display='none';
     }
     return;
   }
   el.innerHTML=lrcLines.map((l,i)=>`<div class="lrc-line" id="lrc-${i}" onclick="aud.currentTime=${l.time}">${esc(l.text)}</div>`).join('');
+  if(lyricsCard) lyricsCard.style.display='block';
   buildLyricsPreview();
 }
 
@@ -2962,6 +2972,121 @@ function refreshCurrentScreen(){
   if(activeScreen==='player') updatePlayerScreen();
 }
 init();
+
+<script>
+/* ═══════════════════════════════════════════════════
+   GESTURES — swipe pour naviguer / fermer
+   ═══════════════════════════════════════════════════ */
+(function(){
+
+  // Ordre des sections nav pour swipe gauche/droite
+  const NAV_ORDER = ['home','playlists','artists','import','storage','cached-tracks'];
+
+  var tx=0, ty=0, locked=null;
+
+  /* ── Swipe bas → fermer player ── */
+  (function(){
+    var el = document.getElementById('s-player');
+    var scrollEl = document.getElementById('player-scroll-el');
+    var startY=0, startX=0, dragging=false, moved=false;
+
+    el.addEventListener('touchstart', function(e){
+      // Ne pas activer si on est dans la zone de scroll et que le scroll n'est pas en haut
+      if(scrollEl && scrollEl.scrollTop > 10) return;
+      startY = e.touches[0].clientY;
+      startX = e.touches[0].clientX;
+      dragging = true; moved = false;
+    }, {passive:true});
+
+    el.addEventListener('touchmove', function(e){
+      if(!dragging) return;
+      var dy = e.touches[0].clientY - startY;
+      var dx = e.touches[0].clientX - startX;
+      if(!moved){
+        // Ignorer si swipe horizontal ou scroll vers le haut
+        if(Math.abs(dx) > Math.abs(dy) || dy < 0){ dragging=false; return; }
+        moved = true;
+      }
+      if(dy > 0){
+        var progress = Math.min(dy / 280, 1);
+        el.style.transform = 'translateY('+dy+'px)';
+        el.style.opacity = 1 - progress * 0.5;
+      }
+    }, {passive:true});
+
+    el.addEventListener('touchend', function(e){
+      if(!dragging || !moved){ dragging=false; return; }
+      dragging = false;
+      var dy = e.changedTouches[0].clientY - startY;
+      if(dy > 120){
+        // Fermer avec animation
+        el.style.transition = 'transform .3s cubic-bezier(.4,0,.2,1), opacity .3s';
+        el.style.transform = 'translateY(100%)';
+        el.style.opacity = '0';
+        setTimeout(function(){
+          el.style.transition = '';
+          el.style.transform = '';
+          el.style.opacity = '';
+          closePlayer();
+        }, 300);
+      } else {
+        // Annuler
+        el.style.transition = 'transform .25s cubic-bezier(.4,0,.2,1), opacity .25s';
+        el.style.transform = '';
+        el.style.opacity = '';
+        setTimeout(function(){ el.style.transition=''; }, 250);
+      }
+    }, {passive:true});
+  })();
+
+  /* ── Swipe droite → retour (sur écrans de détail) ── */
+  /* ── Swipe gauche/droite → navigation entre sections principales ── */
+  (function(){
+    var app = document.getElementById('app') || document.body;
+    var startX=0, startY=0, axisLocked=null;
+    var DETAIL_SCREENS = ['pldetail','albumdetail','artistdetail'];
+
+    document.addEventListener('touchstart', function(e){
+      // Ignorer si dans le player
+      if(activeScreen === 'player') return;
+      // Ignorer si target est un input/range/button interactif
+      var t = e.target;
+      if(t.tagName === 'INPUT' || t.tagName === 'BUTTON' || t.tagName === 'TEXTAREA') return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      axisLocked = null;
+    }, {passive:true});
+
+    document.addEventListener('touchend', function(e){
+      if(activeScreen === 'player') return;
+      var dx = e.changedTouches[0].clientX - startX;
+      var dy = e.changedTouches[0].clientY - startY;
+      // Ignorer si geste trop court ou trop vertical
+      if(Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+
+      // Swipe droite → retour sur écrans de détail
+      if(dx > 60 && DETAIL_SCREENS.includes(activeScreen)){
+        if(activeScreen === 'pldetail') showScreen('playlists', true);
+        else if(activeScreen === 'albumdetail') showScreen('home', true);
+        else if(activeScreen === 'artistdetail') showScreen('artists', true);
+        return;
+      }
+
+      // Swipe gauche/droite → navigation sections principales
+      var idx = NAV_ORDER.indexOf(activeScreen);
+      if(idx === -1) return; // écran de détail non géré ici
+
+      if(dx < -60 && idx < NAV_ORDER.length - 1){
+        // Swipe gauche → section suivante
+        gotoNav(NAV_ORDER[idx + 1]);
+      } else if(dx > 60 && idx > 0){
+        // Swipe droite → section précédente
+        gotoNav(NAV_ORDER[idx - 1]);
+      }
+    }, {passive:true});
+  })();
+
+})();
 </script>
 </body>
 </html>
