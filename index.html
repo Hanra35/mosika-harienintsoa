@@ -220,7 +220,38 @@
     .nav-label{font-size:10px;font-weight:600;color:var(--sub);letter-spacing:.2px;}
     .nav-item.active .nav-label{color:var(--acc);}
 
-    /* PLAYER */
+
+    /* ── PLAYER REDESIGN ── */
+    #s-player{transition:background .8s ease;}
+    .p-card{background:rgba(255,255,255,.06);border-radius:20px;padding:18px;margin:10px 16px;border:1px solid rgba(255,255,255,.07);}
+    .p-card-head{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+    .p-card-icon{font-size:14px;}
+    .p-card-title{font-size:13px;font-weight:800;color:var(--sub);letter-spacing:.1em;text-transform:uppercase;flex:1;}
+    .p-card-action{font-size:13px;font-weight:600;color:var(--acc);cursor:pointer;}
+    .p-card-close{background:transparent;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0;}
+    /* Lyrics preview lines */
+    .lp-line{font-size:16px;font-weight:500;color:rgba(255,255,255,.35);line-height:1.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:all .3s;}
+    .lp-line.active{font-size:19px;font-weight:800;color:#fff;white-space:normal;}
+    .lp-line.near{color:rgba(255,255,255,.6);}
+    /* Full lyrics inside card */
+    .p-lyrics-full-card .lyrics-scroll{max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    /* Artist & up next mini lists */
+    .p-mini-list{display:flex;flex-direction:column;gap:6px;}
+    .p-mini-row{display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer;border-radius:10px;}
+    .p-mini-row:active{opacity:.7;}
+    .p-mini-art{width:44px;height:44px;border-radius:10px;flex-shrink:0;background:var(--card2);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;}
+    .p-mini-info{flex:1;min-width:0;}
+    .p-mini-name{font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .p-mini-sub{font-size:12px;color:var(--sub);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .p-mini-albums{display:flex;gap:10px;overflow-x:auto;margin-top:12px;padding-bottom:4px;-webkit-overflow-scrolling:touch;}
+    .p-mini-album{flex-shrink:0;width:90px;cursor:pointer;}
+    .p-mini-album-art{width:90px;height:90px;border-radius:14px;background:var(--card2);background-size:cover;background-position:center;margin-bottom:6px;}
+    .p-mini-album-name{font-size:11px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
+    .p-mini-album-sub{font-size:10px;color:var(--sub);text-align:center;}
+    /* Up next current indicator */
+    .p-upnext-current{font-size:10px;font-weight:700;color:var(--acc);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;padding:0 2px;}
+
+        /* PLAYER */
     #s-player{background:var(--bg);padding-top:calc(var(--safe-t)+14px);position:relative;}#s-player::before{content:"";position:absolute;top:0;left:0;right:0;height:45%;background:radial-gradient(ellipse at 50% -20%,rgba(45,126,248,.18) 0%,transparent 70%);pointer-events:none;z-index:0;}
     .player-head{display:flex;align-items:center;justify-content:space-between;padding:0 20px;}
     .player-head-title{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:1.2px;text-transform:uppercase;}
@@ -521,33 +552,35 @@
 <!-- PLAYER -->
 <div id="s-player" class="screen hidden">
   <div class="player-head">
-    <div></div>
+    <button class="player-close" onclick="closePlayer()"><svg width="22" height="22" viewBox="0 0 24 24" fill="var(--sub)"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg></button>
     <span class="player-head-title">En lecture</span>
-    <button class="player-close" onclick="closePlayer()"><svg width="14" height="14" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>
+    <button class="pc-btn" onclick="openQueueSheet()" title="File"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg></button>
   </div>
-  <div class="player-scroll">
+  <div class="player-scroll" id="player-scroll-el">
+    <!-- ① ART -->
     <div class="player-art-wrap"><div class="player-art" id="player-art"></div></div>
+    <!-- ② META -->
     <div class="player-meta">
-      <div style="flex:1;min-width:0;"><p class="player-title" id="player-title">—</p><p class="player-artist" id="player-artist">—</p></div>
+      <div style="flex:1;min-width:0;">
+        <p class="player-title" id="player-title">—</p>
+        <p class="player-artist" id="player-artist">—</p>
+      </div>
       <button class="like-btn" id="like-btn" onclick="toggleLike()"><svg width="26" height="26" viewBox="0 0 24 24" fill="var(--sub)"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
     </div>
+    <!-- ③ SEEK -->
     <div class="player-seek">
       <div class="seek-track" id="seek-track"><div class="seek-fill" id="seek-fill" style="width:0%"></div></div>
       <div class="seek-times"><span class="seek-time" id="p-pt">0:00</span><span class="seek-time" id="p-dt">0:00</span></div>
     </div>
-    <!-- FIX 4: 6 buttons including queue -->
+    <!-- ④ CONTROLS -->
     <div class="player-controls">
-      <button class="pc-btn" id="pc-shuf" onclick="toggleShuffle()" title="Aléatoire"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg></button>
+      <button class="pc-btn" id="pc-shuf" onclick="toggleShuffle()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg></button>
       <button class="pc-btn" onclick="goPrev()"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
       <button class="pc-play" onclick="togglePlay()" id="pc-play"><svg id="pc-ico" width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M8 5v14l11-7z"/></svg></button>
       <button class="pc-btn" onclick="goNext()"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
-      <button class="pc-btn" id="pc-rep" onclick="toggleRepeat()" style="position:relative" title="Répéter">
-        <svg id="pc-repico" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>
-        <span id="pc-repdot" style="display:none;position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--acc)"></span>
-      </button>
-      <!-- FIX 4: Queue button -->
-      <button class="pc-btn" onclick="openUpNext()" title="À suivre"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg></button>
+      <button class="pc-btn" id="pc-rep" onclick="toggleRepeat()" style="position:relative"><svg id="pc-repico" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg><span id="pc-repdot" style="display:none;position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--acc)"></span></button>
     </div>
+    <!-- ⑤ VOLUME -->
     <div class="player-vol">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sub)"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
       <span class="vol-sp"></span>
@@ -555,17 +588,52 @@
       <span class="vol-sp"></span>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sub)"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
     </div>
-    <!-- PAROLES SYNCHRONISÉES -->
-    <div style="margin:8px 20px 0;height:1px;background:var(--border);border-radius:1px;"></div>
-    <div class="lyrics-section">
-      <div class="lyrics-header">
-        <span class="lyrics-title">Paroles</span>
-        <button class="lyrics-edit-btn" onclick="openLyricsEditor()">Modifier</button>
+
+    <!-- ⑥ LYRICS PREVIEW CARD -->
+    <div class="p-card" id="p-lyrics-card" onclick="expandLyrics()">
+      <div class="p-card-head">
+        <span class="p-card-icon">🎵</span>
+        <span class="p-card-title">Paroles</span>
+        <span class="p-card-action" id="p-lyrics-action">Voir tout</span>
       </div>
-      <div class="lyrics-container"><div class="lyrics-scroll" id="lyrics-scroll"><div id="lyrics-lines"></div></div></div>
-    </div><!-- /lyrics-section -->
-  </div><!-- /player-scroll -->
-</div><!-- /s-player -->
+      <div id="p-lyrics-preview"></div>
+    </div>
+
+    <!-- ⑦ PAROLES COMPLÈTES (expandable) -->
+    <div class="p-card p-lyrics-full-card" id="p-lyrics-full-card" style="display:none;">
+      <div class="p-card-head">
+        <span class="p-card-icon">🎵</span>
+        <span class="p-card-title">Paroles complètes</span>
+        <button onclick="collapseLyrics()" class="p-card-close">✕</button>
+      </div>
+      <div class="lyrics-section" style="padding:0;">
+        <div class="lyrics-scroll" id="lyrics-scroll"><div id="lyrics-lines"></div></div>
+      </div>
+      <button onclick="openLyricsEditor()" style="width:100%;margin-top:14px;padding:10px;background:var(--card2);border:none;border-radius:12px;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">✏️ Modifier les paroles</button>
+    </div>
+
+    <!-- ⑧ À PROPOS DE L'ARTISTE -->
+    <div class="p-card" id="p-artist-card" style="display:none;">
+      <div class="p-card-head">
+        <span class="p-card-icon">👤</span>
+        <span class="p-card-title" id="p-artist-card-title">À propos de l'artiste</span>
+      </div>
+      <div id="p-artist-songs" class="p-mini-list"></div>
+      <div id="p-artist-albums" class="p-mini-albums"></div>
+    </div>
+
+    <!-- ⑨ EN ATTENTE DE LECTURE -->
+    <div class="p-card" id="p-upnext-card" style="display:none;">
+      <div class="p-card-head">
+        <span class="p-card-icon">▶</span>
+        <span class="p-card-title">En attente de lecture</span>
+      </div>
+      <div id="p-upnext-list" class="p-mini-list"></div>
+    </div>
+
+    <div style="height:var(--scroll-pb);"></div>
+  </div>
+</div>
 
 <!-- STOCKAGE -->
 <div id="s-storage" class="screen hidden">
@@ -1195,6 +1263,7 @@ function loadLyricsForTrack(){
     return;
   }
   el.innerHTML=lrcLines.map((l,i)=>`<div class="lrc-line" id="lrc-${i}" onclick="aud.currentTime=${l.time}">${esc(l.text)}</div>`).join('');
+  renderLyricsPreview();
 }
 
 function updateLyricsSync(ct){
@@ -1212,16 +1281,17 @@ function updateLyricsSync(ct){
     el.classList.toggle('active',i===newIdx);
     el.classList.toggle('past',i<newIdx);
   });
-  // Scroll auto vers la ligne active — utilise player-scroll maintenant
-  if(newIdx>=0){
+  // Update preview card
+  renderLyricsPreview();
+  // Auto-scroll dans la vue paroles complètes si ouverte
+  var fullCard = document.getElementById('p-lyrics-full-card');
+  if(newIdx>=0 && fullCard && fullCard.style.display!=='none'){
     var activeLine=document.getElementById('lrc-'+newIdx);
-    var playerScroll=document.querySelector('.player-scroll');
-    if(activeLine&&playerScroll){
-      var lineTop=activeLine.getBoundingClientRect().top;
-      var scrollTop=playerScroll.scrollTop;
-      var containerTop=playerScroll.getBoundingClientRect().top;
-      var target=scrollTop+(lineTop-containerTop)-playerScroll.clientHeight/2+activeLine.clientHeight/2;
-      playerScroll.scrollTo({top:Math.max(0,target),behavior:'smooth'});
+    var lyricsScroll=document.querySelector('.p-lyrics-full-card .lyrics-scroll');
+    if(activeLine&&lyricsScroll){
+      var lineTop=activeLine.offsetTop;
+      var target=lineTop-lyricsScroll.clientHeight/2+activeLine.clientHeight/2;
+      lyricsScroll.scrollTo({top:Math.max(0,target),behavior:'smooth'});
     }
   }
 }
@@ -2166,10 +2236,175 @@ function artistNamesHtml(artistStr){
   }).join('');
 }
 function resolveImgUrl(imgUrl){if(!imgUrl) return '';if(imgUrl.startsWith('covers/')||imgUrl.startsWith('tracks/')) return rawUrl(imgUrl);/* Re-signe les anciennes URLs B2 complètes dont le token est expiré */var bucketPath='/file/'+BUCKET+'/';var idx=imgUrl.indexOf(bucketPath);if(idx!==-1){var afterBucket=imgUrl.slice(idx+bucketPath.length);var key=decodeURIComponent(afterBucket.split('?')[0]);if(key) return rawUrl(key);}return imgUrl;}
-function updatePlayerScreen(){if(cur===null) return;var t=tracks[cur],h=t.hue||hue(t.name);var pa=document.getElementById('player-art');var imgSrc=resolveImgUrl(t.imgUrl);if(imgSrc){pa.style.cssText='background-image:url(\'' + imgSrc + '\');background-size:cover;background-position:center;';pa.innerHTML='';}else{pa.style.cssText='background:linear-gradient(135deg,'+abg(h)+','+abg2(h)+');';pa.innerHTML=noteIco(80,'rgba(255,255,255,.4)');}pa.classList.remove('pulse');requestAnimationFrame(()=>pa.classList.add('pulse'));document.getElementById('player-title').textContent=t.name;var pa2=document.getElementById('player-artist');
-pa2.textContent=t.artist;
-pa2.style.cursor=artists.find(a=>a.name.toLowerCase()===(t.artist||'').toLowerCase())?'pointer':'default';
-pa2.onclick=function(){openArtistByName(t.artist);};document.querySelector('#like-btn svg').style.fill=liked.has(t.id)?'#ff4d4d':'var(--sub)';updatePlayBtns();loadLyricsForTrack();}
+
+/* ══════════════════════════════════════════
+   PLAYER — Couleur dominante pochette
+   ══════════════════════════════════════════ */
+function extractDominantColor(imgUrl, cb){
+  if(!imgUrl){ cb(null); return; }
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function(){
+    try{
+      var c = document.createElement('canvas');
+      c.width = c.height = 60;
+      var ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, 60, 60);
+      var d = ctx.getImageData(0,0,60,60).data;
+      var r=0,g=0,b=0,n=0;
+      for(var i=0;i<d.length;i+=4){
+        var br=d[i]+d[i+1]+d[i+2];
+        if(br<80||br>700) continue;
+        r+=d[i];g+=d[i+1];b+=d[i+2];n++;
+      }
+      if(!n){ cb(null); return; }
+      cb([r/n|0, g/n|0, b/n|0]);
+    }catch(e){ cb(null); }
+  };
+  img.onerror = ()=>cb(null);
+  img.src = imgUrl;
+}
+
+function applyPlayerColor(rgb){
+  var pl = document.getElementById('s-player');
+  if(!pl) return;
+  if(!rgb){
+    pl.style.background = '';
+    return;
+  }
+  var [r,g,b] = rgb;
+  // Darken for elegant look
+  var dr=r*.5|0, dg=g*.5|0, db=b*.5|0;
+  pl.style.background = 'linear-gradient(180deg,rgb('+dr+','+dg+','+db+') 0%,#0B0E18 55%)';
+}
+
+/* ── Lyrics preview (3 lignes autour de l'active) ── */
+function renderLyricsPreview(){
+  var el = document.getElementById('p-lyrics-preview');
+  if(!el) return;
+  if(!lrcLines.length){
+    var t = cur!==null?tracks[cur]:null;
+    if(t&&t.lrc&&t.lrc.trim().length>5){
+      el.innerHTML = t.lrc.trim().split('\n').slice(0,3).map(l=>
+        '<p class="lp-line near">'+esc(l||'')+'</p>').join('');
+    } else {
+      el.innerHTML = '<p style="color:var(--sub);font-size:13px;">Aucune parole — appuie pour ajouter</p>';
+    }
+    return;
+  }
+  var idx = lrcActiveIdx >= 0 ? lrcActiveIdx : 0;
+  var lines = [];
+  for(var i=Math.max(0,idx-1); i<Math.min(lrcLines.length,idx+4); i++){
+    var cls = i===idx ? 'active' : (Math.abs(i-idx)===1 ? 'near' : '');
+    lines.push('<p class="lp-line '+cls+'">'+esc(lrcLines[i].text||'')+'</p>');
+  }
+  el.innerHTML = lines.join('');
+}
+
+/* ── Artist section ── */
+function renderPlayerArtist(){
+  var t = cur!==null?tracks[cur]:null;
+  var card = document.getElementById('p-artist-card');
+  if(!t||!t.artist){ if(card) card.style.display='none'; return; }
+  if(card) card.style.display='block';
+  var title = document.getElementById('p-artist-card-title');
+  if(title) title.textContent = t.artist;
+
+  // Other songs by artist
+  var otherSongs = tracks.filter((tr,i)=>tr.artist===t.artist&&i!==cur).slice(0,5);
+  var songsEl = document.getElementById('p-artist-songs');
+  if(songsEl) songsEl.innerHTML = otherSongs.length ? otherSongs.map(tr=>{
+    var ri = tracks.indexOf(tr);
+    var img = resolveImgUrl(tr.imgUrl);
+    var artStyle = img ? 'background-image:url('+img+');background-size:cover;' : 'background:'+abg(tr.hue||hue(tr.name))+';';
+    return '<div class="p-mini-row" onclick="playAt('+ri+');closePlayer();">'
+      +'<div class="p-mini-art" style="'+artStyle+'"></div>'
+      +'<div class="p-mini-info"><p class="p-mini-name">'+esc(tr.name)+'</p><p class="p-mini-sub">'+esc(tr.artist)+'</p></div>'
+      +'</div>';
+  }).join('') : '<p style="color:var(--sub);font-size:13px;">Aucun autre titre de cet artiste</p>';
+
+  // Albums by artist
+  var artistAlbums = albums.filter(a=>a.artistId&&artists.find(ar=>ar.id===a.artistId&&ar.name===t.artist)||
+    (tracks.find(tr=>tr.albumId===a.id&&tr.artist===t.artist))).slice(0,6);
+  var albumsEl = document.getElementById('p-artist-albums');
+  if(albumsEl) albumsEl.innerHTML = artistAlbums.length ? artistAlbums.map(a=>{
+    var coverTr = tracks.find(tr=>tr.albumId===a.id);
+    var img = coverTr?resolveImgUrl(coverTr.imgUrl):'';
+    var artStyle = img?'background-image:url('+img+');background-size:cover;':'background:'+abg(hue(a.name))+';';
+    return '<div class="p-mini-album" onclick="openAlbum(\"'+a.id+'\");closePlayer();">'
+      +'<div class="p-mini-album-art" style="'+artStyle+'"></div>'
+      +'<p class="p-mini-album-name">'+esc(a.name)+'</p>'
+      +'<p class="p-mini-album-sub">Album</p>'
+      +'</div>';
+  }).join('') : '';
+}
+
+/* ── Up next section ── */
+function renderPlayerUpNext(){
+  var card = document.getElementById('p-upnext-card');
+  var el   = document.getElementById('p-upnext-list');
+  if(!el||cur===null){ if(card) card.style.display='none'; return; }
+  var q  = getQ();
+  var ci = q.findIndex(tr=>tracks.indexOf(tr)===cur);
+  var upcoming = ci>=0 ? q.slice(ci+1,ci+7) : [];
+  if(!upcoming.length){ if(card) card.style.display='none'; return; }
+  if(card) card.style.display='block';
+  el.innerHTML = upcoming.map(tr=>{
+    var ri = tracks.indexOf(tr);
+    var img = resolveImgUrl(tr.imgUrl);
+    var artStyle = img?'background-image:url('+img+');background-size:cover;':'background:'+abg(tr.hue||hue(tr.name))+';';
+    return '<div class="p-mini-row" onclick="playAt('+ri+')">'
+      +'<div class="p-mini-art" style="'+artStyle+'"></div>'
+      +'<div class="p-mini-info"><p class="p-mini-name">'+esc(tr.name)+'</p><p class="p-mini-sub">'+esc(tr.artist)+'</p></div>'
+      +'</div>';
+  }).join('');
+}
+
+/* ── Expand / collapse lyrics ── */
+function expandLyrics(){
+  document.getElementById('p-lyrics-card').style.display='none';
+  document.getElementById('p-lyrics-full-card').style.display='block';
+  renderLrcLines();
+}
+function collapseLyrics(){
+  document.getElementById('p-lyrics-full-card').style.display='none';
+  document.getElementById('p-lyrics-card').style.display='block';
+}
+
+/* ── Queue sheet (remplace openUpNext) ── */
+function openQueueSheet(){ openUpNext(); }
+
+function updatePlayerScreen(){
+  if(cur===null) return;
+  var t=tracks[cur], h=t.hue||hue(t.name);
+  var pa=document.getElementById('player-art');
+  var imgSrc=resolveImgUrl(t.imgUrl);
+  if(imgSrc){
+    pa.style.cssText='background-image:url(\''+imgSrc+'\');background-size:cover;background-position:center;';
+    pa.innerHTML='';
+    // Couleur dominante de la pochette
+    extractDominantColor(imgSrc, applyPlayerColor);
+  } else {
+    pa.style.cssText='background:linear-gradient(135deg,'+abg(h)+','+abg2(h)+');';
+    pa.innerHTML=noteIco(80,'rgba(255,255,255,.4)');
+    applyPlayerColor(null);
+  }
+  pa.classList.remove('pulse');
+  requestAnimationFrame(()=>pa.classList.add('pulse'));
+  document.getElementById('player-title').textContent=t.name;
+  var pa2=document.getElementById('player-artist');
+  pa2.textContent=t.artist;
+  pa2.style.cursor=artists.find(a=>a.name.toLowerCase()===(t.artist||'').toLowerCase())?'pointer':'default';
+  pa2.onclick=function(){openArtistByName(t.artist);};
+  document.querySelector('#like-btn svg').style.fill=liked.has(t.id)?'#ff4d4d':'var(--sub)';
+  updatePlayBtns();
+  loadLyricsForTrack();
+  renderPlayerArtist();
+  renderPlayerUpNext();
+  // Reset lyrics view
+  collapseLyrics();
+  renderLyricsPreview();
+}
 
 /* ═══════════════════════════════════════════════════════════
    MEDIA SESSION — Contrôles écran verrouillage / notification
