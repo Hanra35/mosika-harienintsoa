@@ -1288,8 +1288,10 @@ function updateLyricsSync(ct){
   if(newIdx>=0 && fullCard && fullCard.style.display!=='none'){
     var activeLine=document.getElementById('lrc-'+newIdx);
     var lyricsScroll=document.querySelector('.p-lyrics-full-card .lyrics-scroll');
-    if(activeLine&&lyricsScroll){
-      var lineTop=activeLine.offsetTop;
+    if(activeLine&&lyricsScroll&&!lyricsScroll._userScrolling){
+      var lyricsLines=document.getElementById('lyrics-lines');
+      var containerOffset=lyricsLines?lyricsLines.offsetTop:0;
+      var lineTop=activeLine.offsetTop+containerOffset;
       var target=lineTop-lyricsScroll.clientHeight/2+activeLine.clientHeight/2;
       lyricsScroll.scrollTo({top:Math.max(0,target),behavior:'smooth'});
     }
@@ -2387,13 +2389,34 @@ function expandLyrics(){
   document.getElementById('p-lyrics-card').style.display='none';
   document.getElementById('p-lyrics-full-card').style.display='block';
   renderLrcLines();
+  // Attacher le listener user-scroll (une seule fois)
+  requestAnimationFrame(function(){
+    var lyricsScroll = document.querySelector('.p-lyrics-full-card .lyrics-scroll');
+    if(lyricsScroll && !lyricsScroll._scrollListenerAttached){
+      lyricsScroll._scrollListenerAttached = true;
+      lyricsScroll._userScrolling = false;
+      lyricsScroll._scrollTimer = null;
+      lyricsScroll.addEventListener('touchstart', function(){
+        lyricsScroll._userScrolling = true;
+        clearTimeout(lyricsScroll._scrollTimer);
+      }, {passive: true});
+      lyricsScroll.addEventListener('touchend', function(){
+        clearTimeout(lyricsScroll._scrollTimer);
+        lyricsScroll._scrollTimer = setTimeout(function(){
+          lyricsScroll._userScrolling = false;
+        }, 4000);
+      }, {passive: true});
+    }
+  });
   // Scroll vers la ligne active immédiatement
   requestAnimationFrame(function(){
     var activeIdx = lrcActiveIdx >= 0 ? lrcActiveIdx : 0;
     var activeLine = document.getElementById('lrc-'+activeIdx);
     var lyricsScroll = document.querySelector('.p-lyrics-full-card .lyrics-scroll');
     if(activeLine && lyricsScroll){
-      var target = activeLine.offsetTop - lyricsScroll.clientHeight/3;
+      var lyricsLines2=document.getElementById('lyrics-lines');
+      var containerOffset2=lyricsLines2?lyricsLines2.offsetTop:0;
+      var target = activeLine.offsetTop + containerOffset2 - lyricsScroll.clientHeight/2 + activeLine.clientHeight/2;
       lyricsScroll.scrollTop = Math.max(0, target);
     }
     // Aussi scroller le player pour montrer les paroles
