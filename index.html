@@ -229,12 +229,12 @@
     .p-card-title{font-size:13px;font-weight:800;color:var(--sub);letter-spacing:.1em;text-transform:uppercase;flex:1;}
     .p-card-action{font-size:13px;font-weight:600;color:var(--acc);cursor:pointer;}
     .p-card-close{background:transparent;border:none;color:var(--sub);font-size:16px;cursor:pointer;padding:0;}
-    /* Lyrics preview lines */
-    .lp-line{font-size:16px;font-weight:500;color:rgba(255,255,255,.3);line-height:1.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .1s ease,opacity .1s ease;}
-    .lp-line.active{font-size:18px;font-weight:800;color:#fff;white-space:normal;text-shadow:0 0 16px rgba(45,126,248,.4);}
-    .lp-line.near{color:rgba(255,255,255,.55);font-size:16px;}
-    /* Full lyrics inside card */
-    .p-lyrics-full-card .lyrics-scroll{max-height:60vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    /* Lyrics preview (Spotify style) */
+    .lp-line{font-size:22px;font-weight:700;color:rgba(255,255,255,.35);line-height:1.4;padding:2px 0;white-space:normal;transition:color .12s ease,opacity .12s ease;}
+    .lp-line.active{color:#fff;opacity:1;}
+    .lp-line.near{color:rgba(255,255,255,.6);}
+    /* Full lyrics (Spotify fullscreen style) */
+    .p-lyrics-full-card .lyrics-scroll{max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
     /* Artist & up next mini lists */
     .p-mini-list{display:flex;flex-direction:column;gap:6px;}
     .p-mini-row{display:flex;align-items:center;gap:10px;padding:6px 0;cursor:pointer;border-radius:10px;}
@@ -257,8 +257,8 @@
     .player-head-title{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:1.2px;text-transform:uppercase;}
     .player-close{background:var(--card);border:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
     .player-scroll{flex:1;overflow-y:auto;padding-bottom:var(--scroll-pb);-webkit-overflow-scrolling:touch;scroll-behavior:smooth;touch-action:pan-y;overscroll-behavior:contain;}
-    .player-art-wrap{padding:22px 30px 16px;display:flex;justify-content:center;}
-    .player-art{width:100%;max-width:300px;aspect-ratio:1/1;border-radius:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 24px 64px rgba(0,0,0,.32);overflow:hidden;background:#1a2235;background-size:cover;background-position:center;}
+    .player-art-wrap{padding:16px 28px 12px;display:flex;justify-content:center;}
+    .player-art{width:100%;max-width:260px;aspect-ratio:1/1;border-radius:16px;display:flex;align-items:center;justify-content:center;box-shadow:0 16px 48px rgba(0,0,0,.45);overflow:hidden;background:#1a2235;background-size:cover;background-position:center;}
     .player-art.pulse{animation:artpulse .5s ease;}
     @keyframes artpulse{0%{transform:scale(1)}
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}50%{transform:scale(1.025)}100%{transform:scale(1)}}
@@ -287,9 +287,9 @@
     .lyrics-edit-btn{background:var(--card2);border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--sub);}
     .lyrics-container{position:relative;}
     .lyrics-scroll{padding:0 4px;}
-    .lrc-line{font-size:18px;font-weight:600;color:var(--sub);line-height:1.6;padding:6px 0;transition:color .15s ease,opacity .15s ease;opacity:.45;cursor:pointer;}
-    .lrc-line.active{color:var(--text);opacity:1;font-weight:800;}
-    .lrc-line.past{opacity:.3;}
+    .lrc-line{font-size:24px;font-weight:700;color:rgba(255,255,255,.3);line-height:1.4;padding:8px 0;transition:color .12s ease,opacity .12s ease;cursor:pointer;}
+    .lrc-line.active{color:#fff;opacity:1;font-weight:800;}
+    .lrc-line.past{color:rgba(255,255,255,.25);opacity:1;}
     .lyrics-empty{text-align:center;padding:24px 0;color:var(--sub);font-size:14px;line-height:1.7;}
     /* Lyrics editor modal */
     .lrc-editor-wrap{padding:0 18px 18px;}
@@ -551,15 +551,21 @@
 
 <!-- PLAYER -->
 <div id="s-player" class="screen hidden">
+  <!-- Header -->
   <div class="player-head">
-    <button class="player-close" onclick="closePlayer()"><svg width="22" height="22" viewBox="0 0 24 24" fill="var(--sub)"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg></button>
-    <span class="player-head-title">En lecture</span>
+    <button class="player-close" onclick="closePlayer()"><svg width="22" height="22" viewBox="0 0 24 24" fill="var(--text)"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg></button>
+    <div style="text-align:center;flex:1;">
+      <p style="font-size:11px;font-weight:700;color:var(--sub);letter-spacing:1.2px;text-transform:uppercase;margin:0;">En lecture</p>
+      <p id="player-head-name" style="font-size:13px;font-weight:700;color:var(--text);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px;margin:0 auto;"></p>
+    </div>
     <button class="pc-btn" onclick="openQueueSheet()" title="File"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h2v-2H3v2zm0 4h2v-2H3v2zm0-8h2V7H3v2zm4 4h14v-2H7v2zm0 4h14v-2H7v2zM7 7v2h14V7H7z"/></svg></button>
   </div>
+
   <div class="player-scroll" id="player-scroll-el">
-    <!-- ① ART -->
+    <!-- ① ART — plus petite, style Spotify -->
     <div class="player-art-wrap"><div class="player-art" id="player-art"></div></div>
-    <!-- ② META -->
+
+    <!-- ② META + LIKE -->
     <div class="player-meta">
       <div style="flex:1;min-width:0;">
         <p class="player-title" id="player-title">—</p>
@@ -567,11 +573,13 @@
       </div>
       <button class="like-btn" id="like-btn" onclick="toggleLike()"><svg width="26" height="26" viewBox="0 0 24 24" fill="var(--sub)"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></button>
     </div>
+
     <!-- ③ SEEK -->
     <div class="player-seek">
       <div class="seek-track" id="seek-track"><div class="seek-fill" id="seek-fill" style="width:0%"></div></div>
       <div class="seek-times"><span class="seek-time" id="p-pt">0:00</span><span class="seek-time" id="p-dt">0:00</span></div>
     </div>
+
     <!-- ④ CONTROLS -->
     <div class="player-controls">
       <button class="pc-btn" id="pc-shuf" onclick="toggleShuffle()"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg></button>
@@ -580,6 +588,7 @@
       <button class="pc-btn" onclick="goNext()"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
       <button class="pc-btn" id="pc-rep" onclick="toggleRepeat()" style="position:relative"><svg id="pc-repico" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg><span id="pc-repdot" style="display:none;position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--acc)"></span></button>
     </div>
+
     <!-- ⑤ VOLUME -->
     <div class="player-vol">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sub)"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
@@ -589,27 +598,30 @@
       <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sub)"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
     </div>
 
-    <!-- ⑥ LYRICS PREVIEW CARD -->
-    <div class="p-card" id="p-lyrics-card">
-      <div class="p-card-head">
-        <span class="p-card-icon">🎵</span>
-        <span class="p-card-title">Paroles</span>
-        <span class="p-card-action" id="p-lyrics-action" onclick="expandLyrics()">Voir tout</span>
+    <!-- ⑥ APERÇU PAROLES — style Spotify (fond coloré, gros texte) -->
+    <div id="p-lyrics-card" style="margin:10px 16px;border-radius:20px;overflow:hidden;display:none;">
+      <div id="p-lyrics-card-inner" style="padding:18px 20px 14px;position:relative;">
+        <p style="font-size:11px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:.1em;text-transform:uppercase;margin:0 0 14px;">Aperçu des paroles</p>
+        <div id="p-lyrics-preview"></div>
+        <div style="height:32px;position:absolute;bottom:50px;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.25));pointer-events:none;"></div>
+        <button onclick="expandLyrics()" style="margin-top:16px;background:rgba(255,255,255,.15);border:none;border-radius:30px;padding:9px 20px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;backdrop-filter:blur(10px);">Afficher les paroles</button>
       </div>
-      <div id="p-lyrics-preview"></div>
     </div>
 
-    <!-- ⑦ PAROLES COMPLÈTES (expandable) -->
-    <div class="p-card p-lyrics-full-card" id="p-lyrics-full-card" style="display:none;">
-      <div class="p-card-head">
-        <span class="p-card-icon">🎵</span>
-        <span class="p-card-title">Paroles complètes</span>
-        <button onclick="collapseLyrics()" class="p-card-close">✕</button>
+    <!-- ⑦ PAROLES COMPLÈTES (plein écran dans le scroll) -->
+    <div id="p-lyrics-full-card" style="display:none;margin:10px 16px;border-radius:20px;overflow:hidden;">
+      <div id="p-lyrics-full-inner" style="padding:18px 20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <p style="font-size:11px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:.1em;text-transform:uppercase;margin:0;">Paroles</p>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button onclick="openLyricsEditor()" style="background:rgba(255,255,255,.15);border:none;border-radius:20px;padding:5px 12px;color:rgba(255,255,255,.8);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">✏️ Modifier</button>
+            <button onclick="collapseLyrics()" style="background:rgba(255,255,255,.15);border:none;width:28px;height:28px;border-radius:50%;color:#fff;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+          </div>
+        </div>
+        <div class="lyrics-scroll" id="lyrics-scroll" style="max-height:55vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+          <div id="lyrics-lines"></div>
+        </div>
       </div>
-      <div class="lyrics-section" style="padding:0;">
-        <div class="lyrics-scroll" id="lyrics-scroll"><div id="lyrics-lines"></div></div>
-      </div>
-      <button onclick="openLyricsEditor()" style="width:100%;margin-top:14px;padding:10px;background:var(--card2);border:none;border-radius:12px;color:var(--sub);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">✏️ Modifier les paroles</button>
     </div>
 
     <!-- ⑧ À PROPOS DE L'ARTISTE -->
@@ -2267,32 +2279,41 @@ function extractDominantColor(imgUrl, cb){
 function applyPlayerColor(rgb){
   var pl = document.getElementById('s-player');
   if(!pl) return;
+  var lyricsCardInner = document.getElementById('p-lyrics-card-inner');
+  var lyricsFullInner = document.getElementById('p-lyrics-full-inner');
   if(!rgb){
     pl.style.background = '';
+    if(lyricsCardInner) lyricsCardInner.style.background = 'rgba(255,255,255,.06)';
+    if(lyricsFullInner) lyricsFullInner.style.background = 'rgba(255,255,255,.06)';
     return;
   }
   var [r,g,b] = rgb;
-  // Darken for elegant look
   var dr=r*.5|0, dg=g*.5|0, db=b*.5|0;
+  var mr=r*.35|0, mg=g*.35|0, mb=b*.35|0;
   pl.style.background = 'linear-gradient(180deg,rgb('+dr+','+dg+','+db+') 0%,#0B0E18 55%)';
+  if(lyricsCardInner) lyricsCardInner.style.background = 'rgb('+mr+','+mg+','+mb+')';
+  if(lyricsFullInner) lyricsFullInner.style.background = 'rgb('+mr+','+mg+','+mb+')';
 }
 
 /* ── Lyrics preview — rendu stable, mise à jour de classes seulement ── */
 var _lyricsPreviewBuilt = false;
 function buildLyricsPreview(){
   var el = document.getElementById('p-lyrics-preview');
+  var card = document.getElementById('p-lyrics-card');
   if(!el) return;
   _lyricsPreviewBuilt = false;
   if(!lrcLines.length){
     var t = cur!==null?tracks[cur]:null;
     if(t&&t.lrc&&t.lrc.trim().length>5){
-      el.innerHTML = t.lrc.trim().split('\n').slice(0,4).map(l=>
+      el.innerHTML = t.lrc.trim().split('\n').slice(0,3).map(l=>
         '<p class="lp-line near">'+esc(l||'')+'</p>').join('');
+      if(card) card.style.display='block';
     } else {
-      el.innerHTML = '<p style="color:var(--sub);font-size:13px;padding:4px 0;">Aucune parole — appuie "Voir tout" pour en ajouter</p>';
+      if(card) card.style.display='none';
     }
     return;
   }
+  if(card) card.style.display='block';
   // Pré-rend toutes les lignes, on mettra à jour les classes seulement
   el.innerHTML = lrcLines.map((l,i)=>
     '<p class="lp-line" id="lp-'+i+'">'+esc(l.text||'')+'</p>'
@@ -2424,7 +2445,9 @@ function expandLyrics(){
 }
 function collapseLyrics(){
   document.getElementById('p-lyrics-full-card').style.display='none';
-  document.getElementById('p-lyrics-card').style.display='block';
+  // Ne montrer la carte preview que si des paroles existent
+  var hasLyrics = lrcLines.length > 0 || (cur!==null && tracks[cur] && tracks[cur].lrc && tracks[cur].lrc.trim().length>5);
+  document.getElementById('p-lyrics-card').style.display = hasLyrics ? 'block' : 'none';
 }
 
 /* ── Queue sheet (remplace openUpNext) ── */
@@ -2448,6 +2471,8 @@ function updatePlayerScreen(){
   pa.classList.remove('pulse');
   requestAnimationFrame(()=>pa.classList.add('pulse'));
   document.getElementById('player-title').textContent=t.name;
+  var phn=document.getElementById('player-head-name');
+  if(phn) phn.textContent=t.name;
   var pa2=document.getElementById('player-artist');
   pa2.textContent=t.artist;
   pa2.style.cursor=artists.find(a=>a.name.toLowerCase()===(t.artist||'').toLowerCase())?'pointer':'default';
