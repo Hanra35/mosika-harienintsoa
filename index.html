@@ -287,8 +287,8 @@
     .lyrics-edit-btn{background:var(--card2);border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--sub);}
     .lyrics-container{position:relative;}
     .lyrics-scroll{padding:0 4px;}
-    .lrc-line{font-size:18px;font-weight:600;color:var(--sub);line-height:1.6;padding:6px 0;transition:color .3s,transform .3s,font-size .3s;transform-origin:left center;opacity:.45;cursor:pointer;}
-    .lrc-line.active{color:var(--text);font-size:22px;opacity:1;transform:scale(1.03);}
+    .lrc-line{font-size:18px;font-weight:600;color:var(--sub);line-height:1.6;padding:6px 0;transition:color .15s ease,opacity .15s ease;opacity:.45;cursor:pointer;}
+    .lrc-line.active{color:var(--text);opacity:1;font-weight:800;}
     .lrc-line.past{opacity:.3;}
     .lyrics-empty{text-align:center;padding:24px 0;color:var(--sub);font-size:14px;line-height:1.7;}
     /* Lyrics editor modal */
@@ -1289,7 +1289,8 @@ function updateLyricsSync(ct){
     var activeLine=document.getElementById('lrc-'+newIdx);
     var lyricsScroll=document.querySelector('.p-lyrics-full-card .lyrics-scroll');
     if(activeLine&&lyricsScroll&&!lyricsScroll._userScrolling){
-      activeLine.scrollIntoView({block:'center',behavior:'smooth'});
+      var target = activeLine.offsetTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
+      lyricsScroll.scrollTo({top: Math.max(0, target), behavior: 'smooth'});
     }
   }
 }
@@ -2410,7 +2411,8 @@ function expandLyrics(){
     var activeLine = document.getElementById('lrc-'+activeIdx);
     var lyricsScroll = document.querySelector('.p-lyrics-full-card .lyrics-scroll');
     if(activeLine && lyricsScroll){
-      activeLine.scrollIntoView({block:'center',behavior:'instant'});
+      var target = activeLine.offsetTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
+      lyricsScroll.scrollTop = Math.max(0, target);
     }
     // Aussi scroller le player pour montrer les paroles
     var playerScroll = document.getElementById('player-scroll-el');
