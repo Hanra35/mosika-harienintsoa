@@ -287,6 +287,13 @@
     .lyrics-edit-btn{background:var(--card2);border:none;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--sub);}
     .lyrics-container{position:relative;}
     .lyrics-scroll{padding:0 4px;}
+    .sleep-opt{padding:13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;color:var(--text);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;}
+    .sleep-opt:active{background:rgba(45,126,248,.25);}
+    .eq-slider{writing-mode:vertical-lr;direction:rtl;-webkit-appearance:slider-vertical;width:28px;height:120px;cursor:pointer;accent-color:var(--acc);}
+    .eq-band{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;}
+    .eq-val{font-size:10px;color:var(--sub);min-width:24px;text-align:center;}
+    .eq-preset{padding:7px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s;}
+    .eq-preset.active{background:rgba(45,126,248,.2);border-color:var(--acc);color:var(--acc);}
     .lrc-line{font-size:24px;font-weight:700;color:rgba(255,255,255,.3);line-height:1.4;padding:8px 0;transition:color .12s ease,opacity .12s ease;cursor:pointer;}
     .lrc-line.active{color:#fff;opacity:1;font-weight:800;}
     .lrc-line.past{color:rgba(255,255,255,.25);opacity:1;}
@@ -596,6 +603,62 @@
       <input id="vslider" type="range" min="0" max="1" step="0.01" value="0.8" oninput="setVol(this.value)">
       <span class="vol-sp"></span>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sub)"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+    </div>
+
+    <!-- ⑤b ACTIONS RAPIDES : minuterie + égaliseur -->
+    <div style="display:flex;gap:10px;margin:4px 16px 0;">
+      <button onclick="openSleepTimer()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.07);border:none;border-radius:14px;padding:12px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+        <span id="sleep-timer-label">Minuterie</span>
+      </button>
+      <button onclick="openEqualizer()" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.07);border:none;border-radius:14px;padding:12px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z"/></svg>
+        Égaliseur
+      </button>
+    </div>
+
+    <!-- MODAL MINUTERIE -->
+    <div id="sleep-timer-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeSleepTimer()">
+      <div style="background:var(--card);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <span style="font-size:17px;font-weight:800;">Minuterie de sommeil</span>
+          <button onclick="closeSleepTimer()" style="background:rgba(255,255,255,.1);border:none;width:30px;height:30px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;">✕</button>
+        </div>
+        <div id="sleep-timer-active-info" style="display:none;background:rgba(45,126,248,.15);border-radius:12px;padding:12px 16px;margin-bottom:16px;color:var(--acc);font-size:14px;font-weight:600;"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <button onclick="setSleepTimer(5)"  class="sleep-opt">5 min</button>
+          <button onclick="setSleepTimer(10)" class="sleep-opt">10 min</button>
+          <button onclick="setSleepTimer(15)" class="sleep-opt">15 min</button>
+          <button onclick="setSleepTimer(20)" class="sleep-opt">20 min</button>
+          <button onclick="setSleepTimer(30)" class="sleep-opt">30 min</button>
+          <button onclick="setSleepTimer(45)" class="sleep-opt">45 min</button>
+          <button onclick="setSleepTimer(60)" class="sleep-opt">1 heure</button>
+          <button onclick="setSleepTimer(90)" class="sleep-opt">1h 30</button>
+        </div>
+        <button onclick="cancelSleepTimer()" style="width:100%;margin-top:14px;padding:13px;background:rgba(255,80,80,.15);border:none;border-radius:14px;color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Annuler la minuterie</button>
+      </div>
+    </div>
+
+    <!-- MODAL ÉGALISEUR -->
+    <div id="equalizer-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeEqualizer()">
+      <div style="background:var(--card);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:17px;font-weight:800;">Égaliseur</span>
+          <button onclick="closeEqualizer()" style="background:rgba(255,255,255,.1);border:none;width:30px;height:30px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;">✕</button>
+        </div>
+        <p style="color:var(--sub);font-size:12px;margin:0 0 20px;">Glisse les curseurs pour ajuster les fréquences</p>
+        <div id="eq-bands" style="display:flex;gap:6px;align-items:flex-end;justify-content:space-between;height:140px;padding:0 4px;"></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px;padding:0 4px;">
+          <span style="font-size:10px;color:var(--sub);">60Hz</span>
+          <span style="font-size:10px;color:var(--sub);">170Hz</span>
+          <span style="font-size:10px;color:var(--sub);">350Hz</span>
+          <span style="font-size:10px;color:var(--sub);">1kHz</span>
+          <span style="font-size:10px;color:var(--sub);">3.5kHz</span>
+          <span style="font-size:10px;color:var(--sub);">10kHz</span>
+        </div>
+        <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:8px;" id="eq-presets"></div>
+        <button onclick="resetEQ()" style="width:100%;margin-top:14px;padding:13px;background:rgba(255,255,255,.07);border:none;border-radius:14px;color:var(--sub);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">Réinitialiser</button>
+      </div>
     </div>
 
     <!-- ⑥ APERÇU PAROLES — style Spotify (fond coloré, gros texte) -->
@@ -1546,13 +1609,20 @@ function switchHomeTab(tab){activeHomeTab=tab;['overview','tracks','albums'].for
 const SCREENS={home:'s-home',playlists:'s-playlists',artists:'s-artists',import:'s-import',pldetail:'s-pldetail',albumdetail:'s-albumdetail',artistdetail:'s-artistdetail',player:'s-player',storage:'s-storage','cached-tracks':'s-cached-tracks',discover:'s-discover'};
 
 var activeScreen='home';
-function showScreen(name,fromLeft){fromLeft=fromLeft||false;var prev=document.getElementById(SCREENS[activeScreen]);var next=document.getElementById(SCREENS[name]);if(!next||prev===next) return;prev.classList.remove('slide-left');if(!fromLeft) prev.classList.add('slide-left');else prev.classList.add('hidden');next.classList.remove('hidden','slide-left');activeScreen=name;}
+function showScreen(name,fromLeft){fromLeft=fromLeft||false;var prev=document.getElementById(SCREENS[activeScreen]);var next=document.getElementById(SCREENS[name]);if(!next||prev===next) return;prev.classList.remove('slide-left');if(!fromLeft) prev.classList.add('slide-left');else prev.classList.add('hidden');next.classList.remove('hidden','slide-left');activeScreen=name;['home','playlists','artists','import','storage','cached-tracks','discover'].forEach(function(n){var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});}
 
 /* FIX 3: hide mini-player when entering player screen, show on close */
 function openPlayer(){
   prevNav=activeScreen;
-  showScreen('player');
+  // Masquer explicitement tous les écrans pour éviter l'overlap
+  Object.keys(SCREENS).forEach(function(n){
+    if(n!=='player'){var el=document.getElementById(SCREENS[n]);if(el){el.classList.add('hidden');el.classList.remove('slide-left');}}
+  });
+  var player=document.getElementById('s-player');
+  player.classList.remove('hidden','slide-left');
+  activeScreen='player';
   document.getElementById('mini-player').classList.add('hidden-in-player');
+  updatePlayerScreen();
 }
 function closePlayer(){
   var s=document.getElementById('s-player');s.classList.add('hidden');s.classList.remove('slide-left');
@@ -2972,6 +3042,162 @@ function refreshCurrentScreen(){
   if(activeScreen==='player') updatePlayerScreen();
 }
 init();
+</script>
+
+<script>
+/* ════════════════════════════════════════
+   MINUTERIE DE SOMMEIL
+   ════════════════════════════════════════ */
+var _sleepTimer = null;
+var _sleepEnd = 0;
+var _sleepInterval = null;
+
+function openSleepTimer(){
+  var modal = document.getElementById('sleep-timer-modal');
+  modal.style.display = 'flex';
+  updateSleepTimerInfo();
+}
+function closeSleepTimer(){
+  document.getElementById('sleep-timer-modal').style.display = 'none';
+}
+function setSleepTimer(minutes){
+  if(_sleepTimer) clearTimeout(_sleepTimer);
+  if(_sleepInterval) clearInterval(_sleepInterval);
+  _sleepEnd = Date.now() + minutes * 60000;
+  _sleepTimer = setTimeout(function(){
+    if(typeof aud !== 'undefined') aud.pause();
+    isPlaying = false;
+    updatePlayBtns();
+    updateMiniPlayer();
+    _sleepTimer = null;
+    _sleepEnd = 0;
+    clearInterval(_sleepInterval);
+    document.getElementById('sleep-timer-label').textContent = 'Minuterie';
+    notify('⏱ Lecture mise en pause par la minuterie');
+    closeSleepTimer();
+  }, minutes * 60000);
+  _sleepInterval = setInterval(updateSleepTimerTick, 1000);
+  updateSleepTimerInfo();
+  notify('⏱ Minuterie : ' + minutes + ' min');
+  closeSleepTimer();
+}
+function cancelSleepTimer(){
+  if(_sleepTimer) clearTimeout(_sleepTimer);
+  if(_sleepInterval) clearInterval(_sleepInterval);
+  _sleepTimer = null; _sleepEnd = 0;
+  document.getElementById('sleep-timer-label').textContent = 'Minuterie';
+  updateSleepTimerInfo();
+  notify('Minuterie annulée');
+}
+function updateSleepTimerTick(){
+  if(!_sleepEnd){ document.getElementById('sleep-timer-label').textContent = 'Minuterie'; return; }
+  var rem = Math.max(0, Math.round((_sleepEnd - Date.now()) / 1000));
+  var m = Math.floor(rem/60), s = rem%60;
+  document.getElementById('sleep-timer-label').textContent = m + ':' + (s<10?'0':'') + s;
+}
+function updateSleepTimerInfo(){
+  var info = document.getElementById('sleep-timer-active-info');
+  if(!info) return;
+  if(_sleepTimer && _sleepEnd){
+    var rem = Math.max(0, Math.round((_sleepEnd - Date.now()) / 1000));
+    var m = Math.floor(rem/60), s = rem%60;
+    info.style.display = 'block';
+    info.textContent = '⏱ Minuterie active — ' + m + 'min ' + (s<10?'0':'') + s + 's restantes';
+  } else {
+    info.style.display = 'none';
+  }
+}
+
+/* ════════════════════════════════════════
+   ÉGALISEUR (Web Audio API)
+   ════════════════════════════════════════ */
+var _eqCtx = null, _eqFilters = [], _eqSource = null, _eqConnected = false;
+var EQ_FREQS = [60, 170, 350, 1000, 3500, 10000];
+var EQ_GAINS = [0, 0, 0, 0, 0, 0];
+var EQ_PRESETS = {
+  'Normal':    [0,  0,  0,  0,  0,  0],
+  'Bass+':     [6,  4,  2,  0,  0,  0],
+  'Treble+':   [0,  0,  0,  2,  4,  6],
+  'Vocal':     [-2, 0,  4,  4,  2, -1],
+  'Hip-Hop':   [5,  4,  1, -1,  2,  3],
+  'Pop':       [-1, 2,  4,  4,  2, -1],
+  'Rock':      [4,  2, -1, -1,  2,  4],
+  'Classique': [0,  0,  0,  2,  2,  4]
+};
+
+function initEQ(){
+  if(_eqCtx) return;
+  try{
+    _eqCtx = new (window.AudioContext || window.webkitAudioContext)();
+    _eqFilters = EQ_FREQS.map(function(freq, i){
+      var f = _eqCtx.createBiquadFilter();
+      f.type = i===0 ? 'lowshelf' : i===EQ_FREQS.length-1 ? 'highshelf' : 'peaking';
+      f.frequency.value = freq;
+      f.gain.value = 0;
+      return f;
+    });
+    // Chain filters
+    _eqFilters.reduce(function(a,b){ a.connect(b); return b; });
+    _eqFilters[_eqFilters.length-1].connect(_eqCtx.destination);
+    // Connect audio element
+    if(typeof aud !== 'undefined'){
+      _eqSource = _eqCtx.createMediaElementSource(aud);
+      _eqSource.connect(_eqFilters[0]);
+      _eqConnected = true;
+    }
+  } catch(e){ console.warn('EQ init failed:', e); }
+}
+
+function openEqualizer(){
+  initEQ();
+  renderEQBands();
+  renderEQPresets();
+  document.getElementById('equalizer-modal').style.display = 'flex';
+}
+function closeEqualizer(){
+  document.getElementById('equalizer-modal').style.display = 'none';
+}
+function renderEQBands(){
+  var container = document.getElementById('eq-bands');
+  if(!container) return;
+  container.innerHTML = EQ_FREQS.map(function(freq, i){
+    return '<div class="eq-band">'
+      + '<span class="eq-val" id="eq-val-'+i+'">'+(EQ_GAINS[i]>0?'+':'')+EQ_GAINS[i]+'dB</span>'
+      + '<input type="range" class="eq-slider" min="-12" max="12" step="1" value="'+EQ_GAINS[i]+'" oninput="setEQBand('+i+',this.value)">'
+      + '</div>';
+  }).join('');
+}
+function renderEQPresets(){
+  var container = document.getElementById('eq-presets');
+  if(!container) return;
+  container.innerHTML = Object.keys(EQ_PRESETS).map(function(name){
+    return '<button class="eq-preset" onclick="applyEQPreset(''+name+'')" id="eq-preset-'+name+'">'+name+'</button>';
+  }).join('');
+}
+function setEQBand(i, val){
+  EQ_GAINS[i] = parseFloat(val);
+  if(_eqFilters[i]) _eqFilters[i].gain.value = EQ_GAINS[i];
+  var label = document.getElementById('eq-val-'+i);
+  if(label) label.textContent = (EQ_GAINS[i]>0?'+':'')+EQ_GAINS[i]+'dB';
+  // Deselect presets
+  document.querySelectorAll('.eq-preset').forEach(function(b){ b.classList.remove('active'); });
+}
+function applyEQPreset(name){
+  var gains = EQ_PRESETS[name];
+  if(!gains) return;
+  EQ_GAINS = gains.slice();
+  _eqFilters.forEach(function(f,i){ if(f) f.gain.value = EQ_GAINS[i]; });
+  renderEQBands();
+  document.querySelectorAll('.eq-preset').forEach(function(b){ b.classList.remove('active'); });
+  var btn = document.getElementById('eq-preset-'+name);
+  if(btn) btn.classList.add('active');
+}
+function resetEQ(){
+  EQ_GAINS = [0,0,0,0,0,0];
+  _eqFilters.forEach(function(f){ if(f) f.gain.value = 0; });
+  renderEQBands();
+  document.querySelectorAll('.eq-preset').forEach(function(b){ b.classList.remove('active'); });
+}
 </script>
 
 <script>
