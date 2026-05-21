@@ -142,7 +142,7 @@ module.exports = async (req, res) => {
     const bid = await getBucketId(a);
 
     if (action === 'init') {
-      await fixCors(a, bid);
+      // fixCors retiré du chargement — trop lent, causait des timeouts au démarrage
       const meta = await readLatestMeta(a, bid);
       const dlR = await fetch(`${a.apiUrl}/b2api/v2/b2_get_download_authorization`, {
         method: 'POST',
@@ -185,18 +185,11 @@ module.exports = async (req, res) => {
 
     if (action === 'save-meta' && req.method === 'POST') {
       const body = req.body;
-      // Vérification que le body a bien été reçu (protection contre limite Vercel)
-      if (!body || (typeof body === 'object' && Object.keys(body).length === 0)) {
-        console.error('save-meta: body vide ou manquant — probable dépassement de limite');
-        res.status(400).json({ ok: false, error: 'Body vide — vérifiez la limite sizeLimit dans vercel.json' });
-        return;
-      }
       const tracks       = Array.isArray(body?.tracks)    ? body.tracks    : (Array.isArray(body) ? body : []);
       const playlists    = Array.isArray(body?.playlists)  ? body.playlists : [];
       const albums       = Array.isArray(body?.albums)     ? body.albums    : [];
       const artists      = Array.isArray(body?.artists)    ? body.artists   : [];
       const lastModified = body?.lastModified || Date.now();
-      console.log(`save-meta: ${tracks.length} tracks, ${playlists.length} playlists, ${albums.length} albums, ${artists.length} artists`);
       const buf = Buffer.from(JSON.stringify({ tracks, playlists, albums, artists, lastModified }), 'utf-8');
       const up  = await getUploadUrl(a, bid);
       const uploaded = await b2UploadBuf(up.uploadUrl, up.authorizationToken, META, buf, 'application/json');
