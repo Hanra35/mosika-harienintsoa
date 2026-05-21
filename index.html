@@ -2967,8 +2967,11 @@ async function uploadFile(file){
     var cr,retries=3;while(retries-->0){cr=await fetch(API+'?action=upload-creds');if(cr.ok)break;if(retries>0)await new Promise(r=>setTimeout(r,1500));}
     if(!cr.ok) throw new Error('Credentials indisponibles après plusieurs tentatives');
     var creds=await cr.json();
+    setP(5);
     var buf=await file.arrayBuffer();
+    setP(15);
     var hash=await crypto.subtle.digest('SHA-1',buf);
+    setP(20);
     var sha1=Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
     var fileId=await new Promise((resolve,reject)=>{
       var xhr=new XMLHttpRequest();
@@ -3037,7 +3040,7 @@ async function init(){
   var apiOk = false;
   try{
     var controller = new AbortController();
-    var timeout = setTimeout(()=>controller.abort(), 15000);
+    var timeout = setTimeout(()=>controller.abort(), 6000);
     var r = await fetch(API+'?action=init', {signal: controller.signal});
     clearTimeout(timeout);
     if(!r.ok) throw new Error('Serveur indisponible ('+r.status+')');
