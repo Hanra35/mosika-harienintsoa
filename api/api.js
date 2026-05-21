@@ -418,3 +418,12 @@ module.exports = async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 };
+
+// Indique à Vercel de parser le body JSON automatiquement jusqu'à 50mb
+module.exports.config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '50mb',
+    },
+  },
+};
