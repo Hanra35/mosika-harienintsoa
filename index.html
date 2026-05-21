@@ -3176,7 +3176,7 @@ function renderEQPresets(){
   var container = document.getElementById('eq-presets');
   if(!container) return;
   container.innerHTML = Object.keys(EQ_PRESETS).map(function(name){
-    return '<button class="eq-preset" onclick="applyEQPreset(''+name+'')" id="eq-preset-'+name+'">'+name+'</button>';
+    return '<button class="eq-preset" onclick="applyEQPreset(\''+name+'\')" id="eq-preset-'+name+'">'+name+'</button>';
   }).join('');
 }
 function setEQBand(i, val){
