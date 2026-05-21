@@ -8,22 +8,6 @@ const META    = 'melo-metadata.json';
 // 👇 Token Musixmatch (web-desktop-app-v1.0)
 const MUSIXMATCH_TOKEN = '2605cebe1ce741a292893ca977a106cdd39cbd5af82732947436';
 
-// Cache d'authentification B2 — évite de se réauthentifier à chaque requête
-let _b2Cache = null;
-let _b2CacheTime = 0;
-
-async function b2AuthCached() {
-  const now = Date.now();
-  if (_b2Cache && (now - _b2CacheTime) < 12 * 60 * 60 * 1000) {
-    return _b2Cache;
-  }
-  const a = await b2Auth();
-  const bid = await getBucketId(a);
-  _b2Cache = { a, bid };
-  _b2CacheTime = now;
-  return _b2Cache;
-}
-
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -154,7 +138,8 @@ module.exports = async (req, res) => {
   const action = req.query?.action;
 
   try {
-    const { a, bid } = await b2AuthCached();
+    const a   = await b2Auth();
+    const bid = await getBucketId(a);
 
     if (action === 'init') {
       await fixCors(a, bid);
@@ -200,11 +185,18 @@ module.exports = async (req, res) => {
 
     if (action === 'save-meta' && req.method === 'POST') {
       const body = req.body;
+      // Vérification que le body a bien été reçu (protection contre limite Vercel)
+      if (!body || (typeof body === 'object' && Object.keys(body).length === 0)) {
+        console.error('save-meta: body vide ou manquant — probable dépassement de limite');
+        res.status(400).json({ ok: false, error: 'Body vide — vérifiez la limite sizeLimit dans vercel.json' });
+        return;
+      }
       const tracks       = Array.isArray(body?.tracks)    ? body.tracks    : (Array.isArray(body) ? body : []);
       const playlists    = Array.isArray(body?.playlists)  ? body.playlists : [];
       const albums       = Array.isArray(body?.albums)     ? body.albums    : [];
       const artists      = Array.isArray(body?.artists)    ? body.artists   : [];
       const lastModified = body?.lastModified || Date.now();
+      console.log(`save-meta: ${tracks.length} tracks, ${playlists.length} playlists, ${albums.length} albums, ${artists.length} artists`);
       const buf = Buffer.from(JSON.stringify({ tracks, playlists, albums, artists, lastModified }), 'utf-8');
       const up  = await getUploadUrl(a, bid);
       const uploaded = await b2UploadBuf(up.uploadUrl, up.authorizationToken, META, buf, 'application/json');
