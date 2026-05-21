@@ -183,8 +183,9 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (action === 'save-meta' && req.method === 'POST') {
+    if (action === 'save-meta') {
       const body = req.body;
+      console.log('save-meta called, method:', req.method, 'body keys:', body ? Object.keys(body) : 'null');
       const tracks       = Array.isArray(body?.tracks)    ? body.tracks    : (Array.isArray(body) ? body : []);
       const playlists    = Array.isArray(body?.playlists)  ? body.playlists : [];
       const albums       = Array.isArray(body?.albums)     ? body.albums    : [];
