@@ -1667,7 +1667,6 @@ async function saveMeta(){
     window._localLastMod=ts;
   }catch(e){
     console.error('saveMeta failed:',e.message);
-    // Affiche une erreur visible si la sauvegarde B2 échoue
     notify('⚠️ Sauvegarde B2 échouée — données conservées localement');
     // Ne propage pas l'erreur : localStorage a déjà sauvegardé
   }
@@ -3038,7 +3037,7 @@ async function init(){
   var apiOk = false;
   try{
     var controller = new AbortController();
-    var timeout = setTimeout(()=>controller.abort(), 6000);
+    var timeout = setTimeout(()=>controller.abort(), 15000);
     var r = await fetch(API+'?action=init', {signal: controller.signal});
     clearTimeout(timeout);
     if(!r.ok) throw new Error('Serveur indisponible ('+r.status+')');
