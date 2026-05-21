@@ -1668,8 +1668,8 @@ async function saveMeta(){
   }catch(e){
     console.error('saveMeta failed:',e.message);
     // Affiche une erreur visible si la sauvegarde B2 échoue
-    notify('⚠️ Erreur de sauvegarde: '+e.message.slice(0,60));
-    throw e; // Propage pour que uploadFile puisse l'attraper
+    notify('⚠️ Sauvegarde B2 échouée — données conservées localement');
+    // Ne propage pas l'erreur : localStorage a déjà sauvegardé
   }
 }
 
@@ -2929,7 +2929,7 @@ async function uploadCoverToB2(base64DataUrl, trackId, creds){
   }
 }
 
-async function handleFiles(files){var af=Array.from(files).filter(f=>f.type.startsWith('audio/')||/\.(mp3|wav|ogg|flac|aac|m4a|opus)$/i.test(f.name));if(!af.length){notify('Aucun fichier audio détecté');return;}await Promise.all(af.map(uploadFile));await saveMeta();renderHome();}
+async function handleFiles(files){var af=Array.from(files).filter(f=>f.type.startsWith('audio/')||/\.(mp3|wav|ogg|flac|aac|m4a|opus)$/i.test(f.name));if(!af.length){notify('Aucun fichier audio détecté');return;}for(var i=0;i<af.length;i++){try{await uploadFile(af[i]);}catch(e){console.warn('Upload échoué pour',af[i].name,e.message);}}await saveMeta();renderHome();}
 
 async function uploadFile(file){
   var id=genId(),ext=(file.name.match(/\.[^.]+$/)||['.mp3'])[0].toLowerCase();
@@ -2965,8 +2965,8 @@ async function uploadFile(file){
   ul.prepend(item);
   var setP=p=>{var pe=document.getElementById('pct-'+id),be=document.getElementById('bar-'+id);if(pe)pe.textContent=p+'%';if(be)be.style.width=p+'%';};
   try{
-    var cr=await fetch(API+'?action=upload-creds');
-    if(!cr.ok) throw new Error('Credentials indisponibles');
+    var cr,retries=3;while(retries-->0){cr=await fetch(API+'?action=upload-creds');if(cr.ok)break;if(retries>0)await new Promise(r=>setTimeout(r,1500));}
+    if(!cr.ok) throw new Error('Credentials indisponibles après plusieurs tentatives');
     var creds=await cr.json();
     var buf=await file.arrayBuffer();
     var hash=await crypto.subtle.digest('SHA-1',buf);
