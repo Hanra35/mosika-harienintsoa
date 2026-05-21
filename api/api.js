@@ -8,6 +8,22 @@ const META    = 'melo-metadata.json';
 // 👇 Token Musixmatch (web-desktop-app-v1.0)
 const MUSIXMATCH_TOKEN = '2605cebe1ce741a292893ca977a106cdd39cbd5af82732947436';
 
+// Cache d'authentification B2 — évite de se réauthentifier à chaque requête
+let _b2Cache = null;
+let _b2CacheTime = 0;
+
+async function b2AuthCached() {
+  const now = Date.now();
+  if (_b2Cache && (now - _b2CacheTime) < 12 * 60 * 60 * 1000) {
+    return _b2Cache;
+  }
+  const a = await b2Auth();
+  const bid = await getBucketId(a);
+  _b2Cache = { a, bid };
+  _b2CacheTime = now;
+  return _b2Cache;
+}
+
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -138,8 +154,7 @@ module.exports = async (req, res) => {
   const action = req.query?.action;
 
   try {
-    const a   = await b2Auth();
-    const bid = await getBucketId(a);
+    const { a, bid } = await b2AuthCached();
 
     if (action === 'init') {
       await fixCors(a, bid);
