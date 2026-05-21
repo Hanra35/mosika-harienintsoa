@@ -1375,8 +1375,10 @@ function updateLyricsSync(ct){
   if(newIdx>=0 && fullCard && fullCard.style.display!=='none'){
     var activeLine=document.getElementById('lrc-'+newIdx);
     var lyricsScroll=document.querySelector('.p-lyrics-full-card .lyrics-scroll');
-    if(activeLine&&lyricsScroll&&!lyricsScroll._userScrolling){
-      var target = activeLine.offsetTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
+    if(activeLine&&lyricsScroll){
+      var lineRect = activeLine.getBoundingClientRect();
+      var scrollRect = lyricsScroll.getBoundingClientRect();
+      var target = lyricsScroll.scrollTop + (lineRect.top - scrollRect.top) - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
       lyricsScroll.scrollTo({top: Math.max(0, target), behavior: 'smooth'});
     }
   }
@@ -2509,7 +2511,7 @@ function expandLyrics(){
         clearTimeout(lyricsScroll._scrollTimer);
         lyricsScroll._scrollTimer = setTimeout(function(){
           lyricsScroll._userScrolling = false;
-        }, 4000);
+        }, 800);
       }, {passive: true});
     }
   });
@@ -3206,14 +3208,29 @@ var _eqCtx = null, _eqFilters = [], _eqSource = null, _eqConnected = false;
 var EQ_FREQS = [60, 170, 350, 1000, 3500, 10000];
 var EQ_GAINS = [0, 0, 0, 0, 0, 0];
 var EQ_PRESETS = {
-  'Normal':    [0,  0,  0,  0,  0,  0],
-  'Bass+':     [6,  4,  2,  0,  0,  0],
-  'Treble+':   [0,  0,  0,  2,  4,  6],
-  'Vocal':     [-2, 0,  4,  4,  2, -1],
-  'Hip-Hop':   [5,  4,  1, -1,  2,  3],
-  'Pop':       [-1, 2,  4,  4,  2, -1],
-  'Rock':      [4,  2, -1, -1,  2,  4],
-  'Classique': [0,  0,  0,  2,  2,  4]
+  'Normal':    [ 0,  0,  0,  0,  0,  0],
+  'Bass+':     [ 6,  5,  3,  0,  0,  0],
+  'Bass-':     [-6, -4, -2,  0,  0,  0],
+  'Treble+':   [ 0,  0,  0,  2,  5,  7],
+  'Treble-':   [ 0,  0,  0, -2, -5, -6],
+  'Vocal':     [-2,  0,  5,  5,  3, -1],
+  'Pop':       [-1,  2,  5,  5,  2, -1],
+  'Rock':      [ 5,  3, -1, -1,  3,  5],
+  'Metal':     [ 7,  4, -1, -1,  4,  7],
+  'Hip-Hop':   [ 6,  4,  1, -1,  2,  4],
+  'R&B':       [ 4,  4,  2,  1,  3,  3],
+  'Jazz':      [ 3,  2,  0,  2,  3,  3],
+  'Blues':     [ 4,  3,  1,  2,  3,  2],
+  'Soul':      [ 3,  2,  2,  3,  3,  2],
+  'Reggae':    [ 4, -1,  0,  4,  0, -1],
+  'Électro':   [ 4,  2, -1, -2,  3,  5],
+  'Dance':     [ 5,  3,  0, -1,  3,  5],
+  'Acoustique':[ 3,  2,  1,  2,  3,  2],
+  'Classique': [ 0,  0,  0,  2,  3,  4],
+  'Lounge':    [-2,  2,  4,  3,  2, -1],
+  'Nuit':      [-1,  3,  5,  3,  1, -2],
+  'Cinéma':    [ 2,  1, -1, -1,  2,  3],
+  'Podcast':   [-3,  0,  4,  5,  3, -2]
 };
 
 function initEQ(){
@@ -3362,6 +3379,17 @@ function resetEQ(){
     var startX=0, startY=0, axisLocked=null;
     var DETAIL_SCREENS = ['pldetail','albumdetail','artistdetail'];
 
+    function isInsideHScrollable(el){
+      while(el && el !== document.body){
+        if(el.scrollWidth > el.clientWidth + 4){
+          var ov = window.getComputedStyle(el).overflowX;
+          if(ov === 'auto' || ov === 'scroll') return true;
+        }
+        el = el.parentElement;
+      }
+      return false;
+    }
+
     document.addEventListener('touchstart', function(e){
       // Ignorer si dans le player
       if(activeScreen === 'player') return;
@@ -3379,6 +3407,8 @@ function resetEQ(){
       var dy = e.changedTouches[0].clientY - startY;
       // Ignorer si geste trop court ou trop vertical
       if(Math.abs(dx) < 60 || Math.abs(dy) > Math.abs(dx) * 0.8) return;
+      // Ignorer si on est dans un scroll horizontal (carousel, etc.)
+      if(isInsideHScrollable(e.target)) return;
 
       // Swipe droite → retour sur écrans de détail
       if(dx > 60 && DETAIL_SCREENS.includes(activeScreen)){
