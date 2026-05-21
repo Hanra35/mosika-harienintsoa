@@ -289,7 +289,7 @@
     .lyrics-scroll{padding:0 4px;}
     .sleep-opt{padding:13px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:14px;color:var(--text);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;}
     .sleep-opt:active{background:rgba(45,126,248,.25);}
-    .eq-slider{writing-mode:vertical-lr;direction:rtl;-webkit-appearance:slider-vertical;width:28px;height:120px;cursor:pointer;accent-color:var(--acc);}
+    .eq-slider{writing-mode:vertical-lr;direction:rtl;width:28px;height:120px;cursor:pointer;accent-color:var(--acc);}
     .eq-band{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;}
     .eq-val{font-size:10px;color:var(--sub);min-width:24px;text-align:center;}
     .eq-preset{padding:7px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s;}
@@ -845,7 +845,7 @@
     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M21.593 7.203a2.506 2.506 0 0 0-1.762-1.766C18.265 5.007 12 5 12 5s-6.264-.007-7.831.404a2.56 2.56 0 0 0-1.766 1.778c-.413 1.566-.417 4.814-.417 4.814s-.004 3.264.406 4.814c.23.857.905 1.534 1.763 1.765 1.582.43 7.83.437 7.83.437s6.265.007 7.831-.403a2.515 2.515 0 0 0 1.767-1.763c.414-1.565.417-4.812.417-4.812s.02-3.265-.407-4.831zM9.996 15.005l.005-6 5.207 3.005-5.212 2.995z"/></svg>
     <span class="nav-label">Découvrir</span>
   </button>
-  <button class="nav-item" id="nav-cached" onclick="gotoNav('cached-tracks')">
+  <button class="nav-item" id="nav-cached-tracks" onclick="gotoNav('cached-tracks')">
     <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
     <span class="nav-label">Cache</span>
   </button>
@@ -858,7 +858,7 @@
 </div>
 
 <div id="notif"></div>
-<audio id="aud" preload="none"></audio>
+<audio id="aud" preload="auto" playsinline webkit-playsinline x-webkit-airplay="allow"></audio>
 
 
 <!-- MODAL MINUTERIE (hors player-scroll pour que position:fixed fonctionne) -->
@@ -2002,7 +2002,7 @@ var tracksHtml=artTracks.length?`<p class="artd-section">Titres</p><div class="s
 // Empty state avec boutons d'action
 var emptyHtml='';
 if(!artTracks.length&&!artAlbums.length){emptyHtml=`<div class="artd-empty"><p class="artd-empty-title">Aucun titre pour l'instant</p><p class="artd-empty-sub">Importe de nouveaux fichiers audio ou assigne des titres deja presents dans Melo.</p><div class="artd-empty-btns"><button class="artd-empty-btn" onclick="document.getElementById('artd-filein').click()"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px;vertical-align:middle"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg>Importer des MP3</button><button class="artd-empty-btn secondary" onclick="openTrackPicker('artist','${currentArtist.id}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right:6px;vertical-align:middle"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Depuis Melo</button></div></div>`;}
-el.innerHTML=`<div class="artd-hero"><div class="artd-avatar" style="background:${abg2(h)}">${currentArtist.name.slice(0,2).toUpperCase()}</div><p class="artd-name">${esc(currentArtist.name)}</p><p class="artd-sub">${artTracks.length} titre${artTracks.length>1?'s':''} · ${artAlbums.length} album${artAlbums.length>1?'s':''}</p>${artTracks.length?`<button onclick="playRandom(artTracks)" style="margin-top:10px;display:inline-flex;align-items:center;gap:5px;background:var(--acc);border:none;border-radius:20px;padding:7px 16px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 8.46 20 10.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>Aléatoire</button>`:''}></div>${emptyHtml}${albumsHtml}${tracksHtml}`;}
+el.innerHTML=`<div class="artd-hero"><div class="artd-avatar" style="background:${abg2(h)}">${currentArtist.name.slice(0,2).toUpperCase()}</div><p class="artd-name">${esc(currentArtist.name)}</p><p class="artd-sub">${artTracks.length} titre${artTracks.length>1?'s':''} · ${artAlbums.length} album${artAlbums.length>1?'s':''}</p>${artTracks.length?`<button onclick="playRandom(artTracks)" style="margin-top:10px;display:inline-flex;align-items:center;gap:5px;background:var(--acc);border:none;border-radius:20px;padding:7px 16px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 8.46 20 10.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>Aléatoire</button>`:''}</div>${emptyHtml}${albumsHtml}${tracksHtml}`;}
 
 function editCurrentArtist(){if(!currentArtist) return;showModal(`<div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">${esc(currentArtist.name)}</div><div class="sheet-item" onclick="closeModal();renameArtist('${currentArtist.id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Renommer l'artiste</div><div class="sheet-item" onclick="closeModal();openTrackPicker('artist','${currentArtist.id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Ajouter des titres</div><div class="sheet-item" onclick="closeModal();openAlbumPicker('${currentArtist.id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 11h-4v4h-2v-4H7v-2h4V7h2v4h4v2z"/></svg>Ajouter des albums</div><div class="sheet-item red" onclick="closeModal();deleteArtist('${currentArtist.id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="#ff4d4d"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer l'artiste</div></div>`);}
 
@@ -2460,7 +2460,7 @@ function renderPlayerArtist(){
     var coverTr = tracks.find(tr=>tr.albumId===a.id);
     var img = coverTr?resolveImgUrl(coverTr.imgUrl):'';
     var artStyle = img?'background-image:url('+img+');background-size:cover;':'background:'+abg(hue(a.name))+';';
-    return '<div class="p-mini-album" onclick="openAlbum(\"'+a.id+'\");closePlayer();">'
+    return '<div class="p-mini-album" onclick="openAlbumDetail(\"'+a.id+'\");closePlayer();">'
       +'<div class="p-mini-album-art" style="'+artStyle+'"></div>'
       +'<p class="p-mini-album-name">'+esc(a.name)+'</p>'
       +'<p class="p-mini-album-sub">Album</p>'
@@ -2651,6 +2651,92 @@ aud.addEventListener('timeupdate',()=>{var p=aud.duration?(aud.currentTime/aud.d
 aud.addEventListener('play',()=>{isPlaying=true;updatePlayBtns();renderHome();renderPlDetail();if('mediaSession' in navigator)navigator.mediaSession.playbackState='playing';});
 aud.addEventListener('pause',()=>{isPlaying=false;updatePlayBtns();renderHome();renderPlDetail();if('mediaSession' in navigator)navigator.mediaSession.playbackState='paused';});
 aud.addEventListener('ended',goNext);
+
+/* ═══════════════════════════════════════════════════════════════════
+   FIX CRITIQUE — Audio arrière-plan + Pause + Paroles
+   ═══════════════════════════════════════════════════════════════════ */
+
+// ── 1. AUDIOCONTEXT LIFECYCLE : reprendre quand l'app revient au premier plan ──
+// Le problème principal : quand l'écran se verrouille, le navigateur suspend
+// l'AudioContext. Comme aud passe par createMediaElementSource, le son s'arrête.
+function _resumeAudioContext() {
+  if (_eqCtx && _eqCtx.state === 'suspended') {
+    _eqCtx.resume().catch(function() {});
+  }
+}
+
+function _restorePlayback() {
+  _resumeAudioContext();
+  // Si on était en train de jouer mais que l'audio s'est arrêté (suspendu par le navigateur)
+  if (isPlaying && aud.paused && cur !== null) {
+    aud.play().catch(function() {});
+  }
+}
+
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'visible') {
+    _restorePlayback();
+  }
+});
+
+window.addEventListener('pageshow', function(e) {
+  // persisted=true = page restaurée depuis le cache du navigateur (bfcache)
+  setTimeout(_restorePlayback, 300);
+});
+
+// Reprendre aussi lors d'une interaction utilisateur (fallback iOS)
+document.addEventListener('touchstart', function() {
+  _resumeAudioContext();
+}, { passive: true });
+
+// ── 2. FIX PAUSE : s'assurer que l'AudioContext est bien suspendu au pause ────
+var _origTogglePlay = togglePlay;
+togglePlay = function() {
+  _origTogglePlay();
+  // Si on vient de mettre en pause et que l'EQ est actif,
+  // suspendre l'AudioContext évite qu'il continue de sortir du buffer
+  if (!isPlaying && _eqCtx && _eqCtx.state === 'running') {
+    // On ne suspend PAS l'AudioContext car ça empêcherait la reprise rapide
+    // À la place on s'assure que l'état est correct
+    if (!aud.paused) {
+      aud.pause();
+    }
+  }
+};
+
+// ── 3. FIX PAROLES : réinitialiser lrcActiveIdx quand le titre recommence ─────
+// En mode répétition (repeatMode=2), goNext() fait aud.currentTime=0 sans
+// appeler loadLyricsForTrack(), donc les paroles restent sur la dernière ligne.
+var _origGoNext = goNext;
+goNext = function() {
+  if (repeatMode === 2) {
+    // Réinitialiser l'index des paroles avant de repartir à 0
+    lrcActiveIdx = -1;
+    var el = document.getElementById('lyrics-lines');
+    if (el) {
+      document.querySelectorAll('.lrc-line').forEach(function(l) {
+        l.classList.remove('active', 'past');
+      });
+    }
+  }
+  _origGoNext();
+};
+
+// ── 4. FIX PAROLES (bis) : bloquer updateLyricsSync quand en pause ────────────
+var _origUpdateLyricsSync = updateLyricsSync;
+updateLyricsSync = function(ct) {
+  // Si réellement en pause (pas juste isPlaying=false), ne pas mettre à jour
+  if (aud.paused && !isPlaying) return;
+  _origUpdateLyricsSync(ct);
+};
+
+// ── 5. SERVICE WORKER : audio persistant en arrière-plan (PWA) ───────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(function() {
+    // sw.js non disponible — mode dégradé (sans SW)
+  });
+}
+
 
 var modalEl=null;
 function showModal(html){closeModal();modalEl=document.createElement('div');modalEl.className='modal-bg';modalEl.innerHTML=html;modalEl.addEventListener('click',e=>{if(e.target===modalEl)closeModal();});document.body.appendChild(modalEl);}
