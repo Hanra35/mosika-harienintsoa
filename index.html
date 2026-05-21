@@ -617,49 +617,6 @@
       </button>
     </div>
 
-    <!-- MODAL MINUTERIE -->
-    <div id="sleep-timer-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeSleepTimer()">
-      <div style="background:var(--card);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-          <span style="font-size:17px;font-weight:800;">Minuterie de sommeil</span>
-          <button onclick="closeSleepTimer()" style="background:rgba(255,255,255,.1);border:none;width:30px;height:30px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;">✕</button>
-        </div>
-        <div id="sleep-timer-active-info" style="display:none;background:rgba(45,126,248,.15);border-radius:12px;padding:12px 16px;margin-bottom:16px;color:var(--acc);font-size:14px;font-weight:600;"></div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-          <button onclick="setSleepTimer(5)"  class="sleep-opt">5 min</button>
-          <button onclick="setSleepTimer(10)" class="sleep-opt">10 min</button>
-          <button onclick="setSleepTimer(15)" class="sleep-opt">15 min</button>
-          <button onclick="setSleepTimer(20)" class="sleep-opt">20 min</button>
-          <button onclick="setSleepTimer(30)" class="sleep-opt">30 min</button>
-          <button onclick="setSleepTimer(45)" class="sleep-opt">45 min</button>
-          <button onclick="setSleepTimer(60)" class="sleep-opt">1 heure</button>
-          <button onclick="setSleepTimer(90)" class="sleep-opt">1h 30</button>
-        </div>
-        <button onclick="cancelSleepTimer()" style="width:100%;margin-top:14px;padding:13px;background:rgba(255,80,80,.15);border:none;border-radius:14px;color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Annuler la minuterie</button>
-      </div>
-    </div>
-
-    <!-- MODAL ÉGALISEUR -->
-    <div id="equalizer-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeEqualizer()">
-      <div style="background:var(--card);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-          <span style="font-size:17px;font-weight:800;">Égaliseur</span>
-          <button onclick="closeEqualizer()" style="background:rgba(255,255,255,.1);border:none;width:30px;height:30px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;">✕</button>
-        </div>
-        <p style="color:var(--sub);font-size:12px;margin:0 0 20px;">Glisse les curseurs pour ajuster les fréquences</p>
-        <div id="eq-bands" style="display:flex;gap:6px;align-items:flex-end;justify-content:space-between;height:140px;padding:0 4px;"></div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px;padding:0 4px;">
-          <span style="font-size:10px;color:var(--sub);">60Hz</span>
-          <span style="font-size:10px;color:var(--sub);">170Hz</span>
-          <span style="font-size:10px;color:var(--sub);">350Hz</span>
-          <span style="font-size:10px;color:var(--sub);">1kHz</span>
-          <span style="font-size:10px;color:var(--sub);">3.5kHz</span>
-          <span style="font-size:10px;color:var(--sub);">10kHz</span>
-        </div>
-        <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:8px;" id="eq-presets"></div>
-        <button onclick="resetEQ()" style="width:100%;margin-top:14px;padding:13px;background:rgba(255,255,255,.07);border:none;border-radius:14px;color:var(--sub);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">Réinitialiser</button>
-      </div>
-    </div>
 
     <!-- ⑥ APERÇU PAROLES — style Spotify (fond coloré, gros texte) -->
     <div id="p-lyrics-card" style="margin:10px 16px;border-radius:20px;overflow:hidden;display:none;">
@@ -902,6 +859,51 @@
 
 <div id="notif"></div>
 <audio id="aud" preload="none"></audio>
+
+
+<!-- MODAL MINUTERIE (hors player-scroll pour que position:fixed fonctionne) -->
+<div id="sleep-timer-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeSleepTimer()">
+  <div style="background:var(--card);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <span style="font-size:17px;font-weight:800;">Minuterie de sommeil</span>
+      <button onclick="closeSleepTimer()" style="background:rgba(255,255,255,.1);border:none;width:30px;height:30px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;">✕</button>
+    </div>
+    <div id="sleep-timer-active-info" style="display:none;background:rgba(45,126,248,.15);border-radius:12px;padding:12px 16px;margin-bottom:16px;color:var(--acc);font-size:14px;font-weight:600;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button onclick="setSleepTimer(5)"  class="sleep-opt">5 min</button>
+      <button onclick="setSleepTimer(10)" class="sleep-opt">10 min</button>
+      <button onclick="setSleepTimer(15)" class="sleep-opt">15 min</button>
+      <button onclick="setSleepTimer(20)" class="sleep-opt">20 min</button>
+      <button onclick="setSleepTimer(30)" class="sleep-opt">30 min</button>
+      <button onclick="setSleepTimer(45)" class="sleep-opt">45 min</button>
+      <button onclick="setSleepTimer(60)" class="sleep-opt">1 heure</button>
+      <button onclick="setSleepTimer(90)" class="sleep-opt">1h 30</button>
+    </div>
+    <button onclick="cancelSleepTimer()" style="width:100%;margin-top:14px;padding:13px;background:rgba(255,80,80,.15);border:none;border-radius:14px;color:#ff6b6b;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;">Annuler la minuterie</button>
+  </div>
+</div>
+
+<!-- MODAL ÉGALISEUR (hors player-scroll pour que position:fixed fonctionne) -->
+<div id="equalizer-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);align-items:flex-end;justify-content:center;" onclick="if(event.target===this)closeEqualizer()">
+  <div style="background:var(--card);border-radius:24px 24px 0 0;padding:24px 20px 40px;width:100%;max-width:480px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-size:17px;font-weight:800;">Égaliseur</span>
+      <button onclick="closeEqualizer()" style="background:rgba(255,255,255,.1);border:none;width:30px;height:30px;border-radius:50%;color:var(--text);font-size:16px;cursor:pointer;">✕</button>
+    </div>
+    <p style="color:var(--sub);font-size:12px;margin:0 0 20px;">Glisse les curseurs pour ajuster les fréquences</p>
+    <div id="eq-bands" style="display:flex;gap:6px;align-items:flex-end;justify-content:space-between;height:140px;padding:0 4px;"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;padding:0 4px;">
+      <span style="font-size:10px;color:var(--sub);">60Hz</span>
+      <span style="font-size:10px;color:var(--sub);">170Hz</span>
+      <span style="font-size:10px;color:var(--sub);">350Hz</span>
+      <span style="font-size:10px;color:var(--sub);">1kHz</span>
+      <span style="font-size:10px;color:var(--sub);">3.5kHz</span>
+      <span style="font-size:10px;color:var(--sub);">10kHz</span>
+    </div>
+    <div style="margin-top:20px;display:flex;flex-wrap:wrap;gap:8px;" id="eq-presets"></div>
+    <button onclick="resetEQ()" style="width:100%;margin-top:14px;padding:13px;background:rgba(255,255,255,.07);border:none;border-radius:14px;color:var(--sub);font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;">Réinitialiser</button>
+  </div>
+</div>
 
 <script>
 const API='./api/api', BUCKET='melo-music-2026';
@@ -1628,6 +1630,11 @@ function closePlayer(){
   var s=document.getElementById('s-player');s.classList.add('hidden');s.classList.remove('slide-left');
   var target=prevNav||'home';var prev=document.getElementById(SCREENS[target]);
   if(prev){prev.classList.remove('hidden','slide-left');}
+  // Resync nav highlight
+  ['home','playlists','artists','import','storage','cached-tracks','discover'].forEach(function(n){
+    var item=document.getElementById('nav-'+n);if(!item) return;
+    item.classList.toggle('active', n===target);
+  });
   activeScreen=target;
   /* restore mini-player only if a track is playing */
   if(cur!==null) document.getElementById('mini-player').classList.remove('hidden-in-player');
@@ -1823,7 +1830,7 @@ function setAlbumPhoto(albumId){
   inp.click();
 }
 
-function openAlbumDetail(id){currentAlbum=albums.find(a=>a.id===id);if(!currentAlbum) return;document.getElementById('albd-title').textContent=currentAlbum.name;document.getElementById('albd-back').onclick=()=>{showScreen('home',true);switchHomeTab('albums');};renderAlbumDetail();showScreen('albumdetail');}
+function openAlbumDetail(id){currentAlbum=albums.find(a=>a.id===id);if(!currentAlbum) return;document.getElementById('albd-title').textContent=currentAlbum.name;var fromArtist=(activeScreen==='artistdetail');document.getElementById('albd-back').onclick=fromArtist?function(){showScreen('artistdetail',true);}:function(){showScreen('home',true);switchHomeTab('albums');};renderAlbumDetail();showScreen('albumdetail');}
 
 function renderAlbumDetail(){
   var el=document.getElementById('albd-scroll');
