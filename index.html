@@ -1611,7 +1611,7 @@ function switchHomeTab(tab){activeHomeTab=tab;['overview','tracks','albums'].for
 const SCREENS={home:'s-home',playlists:'s-playlists',artists:'s-artists',import:'s-import',pldetail:'s-pldetail',albumdetail:'s-albumdetail',artistdetail:'s-artistdetail',player:'s-player',storage:'s-storage','cached-tracks':'s-cached-tracks',discover:'s-discover'};
 
 var activeScreen='home';
-function showScreen(name,fromLeft){fromLeft=fromLeft||false;var prev=document.getElementById(SCREENS[activeScreen]);var next=document.getElementById(SCREENS[name]);if(!next||prev===next) return;prev.classList.remove('slide-left');if(!fromLeft) prev.classList.add('slide-left');else prev.classList.add('hidden');next.classList.remove('hidden','slide-left');activeScreen=name;['home','playlists','artists','import','storage','cached-tracks','discover'].forEach(function(n){var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});}
+function showScreen(name,fromLeft){fromLeft=fromLeft||false;var prev=document.getElementById(SCREENS[activeScreen]);var next=document.getElementById(SCREENS[name]);if(!next||prev===next) return;prev.classList.remove('slide-left');if(!fromLeft) prev.classList.add('slide-left');else prev.classList.add('hidden');next.classList.remove('hidden','slide-left');activeScreen=name;if(name!=='player'){['home','playlists','artists','import','storage','cached-tracks','discover'].forEach(function(n){var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});}}
 
 /* FIX 3: hide mini-player when entering player screen, show on close */
 function openPlayer(){
@@ -3049,9 +3049,7 @@ function refreshCurrentScreen(){
   if(activeScreen==='player') updatePlayerScreen();
 }
 init();
-</script>
 
-<script>
 /* ════════════════════════════════════════
    MINUTERIE DE SOMMEIL
    ════════════════════════════════════════ */
@@ -3205,9 +3203,7 @@ function resetEQ(){
   renderEQBands();
   document.querySelectorAll('.eq-preset').forEach(function(b){ b.classList.remove('active'); });
 }
-</script>
 
-<script>
 /* ═══════════════════════════════════════════════════
    GESTURES — swipe pour naviguer / fermer
    ═══════════════════════════════════════════════════ */
