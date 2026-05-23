@@ -422,7 +422,18 @@
     /* MODALS */
     .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
     .modal-bg.center{align-items:center;}
-    .sheet{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-width:500px;padding:10px 0 calc(16px + var(--safe-b));max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+
+    /* ── Long Press iOS-style ── */
+    @keyframes lp-pulse{0%{transform:scale(1);}60%{transform:scale(.94);}100%{transform:scale(.94);}}
+    .lp-pressing{animation:lp-pulse .45s cubic-bezier(.4,0,.2,1) forwards;transform-origin:center;}
+    .modal-bg{backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);}
+    .sheet{background:var(--card);border-radius:22px 22px 0 0;width:100%;max-width:500px;padding:10px 0 calc(16px + var(--safe-b));max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+      animation:sheet-up .32s cubic-bezier(.34,1.04,.64,1);}
+    @keyframes sheet-up{from{transform:translateY(100%);}to{transform:translateY(0);}}
+    .sheet-preview{display:flex;align-items:center;gap:12px;padding:0 18px 14px;border-bottom:1px solid var(--border);margin-bottom:4px;}
+    .sheet-preview-art{width:44px;height:44px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background-size:cover;background-position:center;}
+    .sheet-preview-name{font-size:15px;font-weight:600;color:var(--text);font-family:'Cormorant Garamond',serif;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .sheet-preview-sub{font-size:11px;color:var(--sub);margin-top:2px;letter-spacing:.8px;font-family:'Josefin Sans',sans-serif;}
     .sheet.dialog{border-radius:18px;padding:22px;max-width:320px;margin:16px;}
     .sheet-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px;}
     .sheet-title{font-size:11px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;padding:0 18px 8px;}
@@ -1703,7 +1714,7 @@ async function saveMeta(){
 }
 
 /* SONG ROW */
-function songRowHtml(t,i,clickFn,menuFn,removeFn){var h=t.hue||hue(t.name),isCur=i===cur;var eqHtml='<div class="eq on"><span style="height:6px"></span><span style="height:13px"></span><span style="height:9px"></span></div>';var artStyle,artInner;var _imgSrc=resolveImgUrl(t.imgUrl);if(_imgSrc){artStyle='background-image:url(\''+_imgSrc+'\');background-size:cover;background-position:center;';artInner=isCur&&isPlaying?'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);border-radius:13px">'+eqHtml+'</div>':'';}else{artStyle='background:'+abg(h)+';';artInner=isCur&&isPlaying?eqHtml:noteIco(20,'rgba(255,255,255,.8)');}var btn=removeFn?`<button class="song-menu" onclick="${removeFn}"><svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>`:`<button class="song-menu" onclick="${menuFn}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button>`;return `<div class="song-row${isCur?' active':''}" onclick="${clickFn}"><div class="song-art" style="${artStyle}position:relative;">${artInner}</div><div class="song-info"><p class="song-name">${esc(t.name)}</p><p class="song-artist">${artistNamesHtml(t.artist)}</p></div>${btn}</div>`;}
+function songRowHtml(t,i,clickFn,menuFn,removeFn){var h=t.hue||hue(t.name),isCur=i===cur;var eqHtml='<div class="eq on"><span style="height:6px"></span><span style="height:13px"></span><span style="height:9px"></span></div>';var artStyle,artInner;var _imgSrc=resolveImgUrl(t.imgUrl);if(_imgSrc){artStyle='background-image:url(\''+_imgSrc+'\');background-size:cover;background-position:center;';artInner=isCur&&isPlaying?'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);border-radius:13px">'+eqHtml+'</div>':'';}else{artStyle='background:'+abg(h)+';';artInner=isCur&&isPlaying?eqHtml:noteIco(20,'rgba(255,255,255,.8)');}var btn=removeFn?`<button class="song-menu" onclick="${removeFn}"><svg width="16" height="16" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>`:`<button class="song-menu" onclick="${menuFn}"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button>`;return `<div class="song-row${isCur?' active':''}" onclick="${clickFn}" data-lp-id="${t.id}" data-lp-type="track"><div class="song-art" style="${artStyle}position:relative;">${artInner}</div><div class="song-info"><p class="song-name">${esc(t.name)}</p><p class="song-artist">${artistNamesHtml(t.artist)}</p></div>${btn}</div>`;}
 
 /* ════════════════════════════════════════
    FIX 1: TRACK PICKER — always gets FRESH existingIds from the live object
@@ -1806,11 +1817,12 @@ function renderHome(){
     var artHtml=pl.trackIds.length>=2?`<div class="pl-card-grid">${cells.join('')}</div>`:`<div class="pl-card-solo">${noteIco(36,'rgba(255,255,255,.3)')}</div>`;
     var firstTrack=tracks.find(x=>x.id===pl.trackIds[0]);
     var bgFallback=firstTrack?abg(firstTrack.hue||hue(firstTrack.name)):'#2a3548';
-    return `<div class="pl-card" onclick="openPlDetail('${pl.id}')"><div class="pl-card-art" style="background:${bgFallback}">${artHtml}</div><p class="pl-card-name">${esc(pl.name)}</p><p class="pl-card-sub">${pl.trackIds.length} titre${pl.trackIds.length>1?'s':''}</p></div>`;}).join('')+`<div class="pl-new-card" onclick="newPlaylist()"><div class="pl-new-art"><svg width="28" height="28" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div><p class="pl-card-name" style="color:var(--sub);text-align:center">Nouvelle</p></div>`;}
+    return `<div class="pl-card" onclick="openPlDetail('${pl.id}')" data-lp-id="${pl.id}" data-lp-type="playlist"><div class="pl-card-art" style="background:${bgFallback}">${artHtml}</div><p class="pl-card-name">${esc(pl.name)}</p><p class="pl-card-sub">${pl.trackIds.length} titre${pl.trackIds.length>1?'s':''}</p></div>`;}).join('')+`<div class="pl-new-card" onclick="newPlaylist()"><div class="pl-new-art"><svg width="28" height="28" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg></div><p class="pl-card-name" style="color:var(--sub);text-align:center">Nouvelle</p></div>`;}
   else ps.style.display='none';
   var sl=document.getElementById('song-list-overview'),lc=document.getElementById('lib-count-lbl');
   if(!tracks.length){lc.textContent='';sl.innerHTML=`<div class="empty-state"><div class="empty-icon">${noteIco(34,'var(--sub)')}</div><p class="empty-title">Bibliothèque vide</p><p class="empty-sub">Ajoutez vos fichiers audio</p><button class="empty-cta" onclick="gotoNav('import')">Importer</button></div>`;}
   else{lc.textContent=tracks.length+' titre'+(tracks.length>1?'s':'');sl.innerHTML=tracks.slice(0,6).map((t,i)=>songRowHtml(t,i,`rowClick(event,${i})`,`openTrackMenu(event,'${t.id}')`,null)).join('');if(tracks.length>6) sl.innerHTML+=`<div style="text-align:center;padding:12px"><button style="background:transparent;border:none;color:var(--acc);font-size:13px;font-weight:500" onclick="switchHomeTab('tracks')">Voir tout (${tracks.length})</button></div>`;}
+  setTimeout(()=>applyLongPressGlobal(),0);
 }
 
 function getSortedTracks(list){
@@ -1824,9 +1836,10 @@ function updateSortLabel(){var labels={default:'Défaut',az:'A→Z',za:'Z→A',a
 function openSortMenu(){var modes=[['default','Ordre par défaut'],['recent','Plus récent en premier'],['az','Titre A → Z'],['za','Titre Z → A'],['artist','Artiste A → Z']];showModal('<div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">Trier les titres</div>'+modes.map(([m,l])=>`<div class="sheet-item" onclick="setSortMode('${m}')" style="${sortMode===m?'color:var(--acc);font-weight:600;':''}"><svg width="20" height="20" viewBox="0 0 24 24" fill="${sortMode===m?'var(--acc)':'var(--sub)'}"><path d="${sortMode===m?'M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z':'M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z'}"/></svg>${l}</div>`).join('')+'</div>');}
 function setSortMode(m){sortMode=m;updateSortLabel();closeModal();renderTracks();}
 
-function renderTracks(){var q=(document.getElementById('track-search')?.value||'').toLowerCase().trim();var list=q?tracks.filter(t=>(t.name+t.artist).toLowerCase().includes(q)):tracks;list=getSortedTracks(list);var el=document.getElementById('song-list-tracks'),lc=document.getElementById('tracks-count');if(!tracks.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">${noteIco(34,'var(--sub)')}</div><p class="empty-title">Aucun titre</p></div>`;return;}lc.textContent=list.length+(q?' résultat'+(list.length>1?'s':''):' titre'+(list.length>1?'s':''));el.innerHTML=list.map(t=>{var i=tracks.indexOf(t);return songRowHtml(t,i,`rowClick(event,${i})`,`openTrackMenu(event,'${t.id}')`,null);}).join('');}
+function renderTracks(){var q=(document.getElementById('track-search')?.value||'').toLowerCase().trim();var list=q?tracks.filter(t=>(t.name+t.artist).toLowerCase().includes(q)):tracks;list=getSortedTracks(list);var el=document.getElementById('song-list-tracks'),lc=document.getElementById('tracks-count');if(!tracks.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">${noteIco(34,'var(--sub)')}</div><p class="empty-title">Aucun titre</p></div>`;return;}lc.textContent=list.length+(q?' résultat'+(list.length>1?'s':''):' titre'+(list.length>1?'s':''));el.innerHTML=list.map(t=>{var i=tracks.indexOf(t);return songRowHtml(t,i,`rowClick(event,${i})`,`openTrackMenu(event,'${t.id}')`,null);}).join('');setTimeout(()=>applyLongPressGlobal(),0);}
 
-function renderAlbumsGrid(){var el=document.getElementById('albums-grid');el.innerHTML=albums.map(alb=>{var colors=alb.trackIds.slice(0,4).map(id=>{var t=tracks.find(x=>x.id===id);return t?abg(t.hue||hue(t.name)):'#2a3548';});var artHtml=alb.imgUrl?'<img src="'+alb.imgUrl+'" style="width:100%;height:100%;object-fit:cover;">':colors.length>=2?'<div class="album-art-grid">'+colors.slice(0,4).map(c=>'<div style="background:'+c+'"></div>').join('')+'</div>':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:'+(colors[0]||'#2a3548')+'">'+noteIco(36,'rgba(255,255,255,.4)')+'</div>';return '<div class="album-card" onclick="openAlbumDetail(\''+alb.id+'\')"><div class="album-art">'+artHtml+'<button class="album-menu-btn" onclick="event.stopPropagation();openAlbumMenu(\''+alb.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button></div><div class="album-info"><p class="album-name">'+esc(alb.name)+'</p><p class="album-sub">'+alb.trackIds.length+' titre'+(alb.trackIds.length>1?'s':'')+'</p></div></div>';}).join('')+'<div class="album-new" onclick="newAlbum()"><svg width="28" height="28" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg><p>Nouvel album</p></div>';}
+function renderAlbumsGrid(){var el=document.getElementById('albums-grid');el.innerHTML=albums.map(alb=>{var colors=alb.trackIds.slice(0,4).map(id=>{var t=tracks.find(x=>x.id===id);return t?abg(t.hue||hue(t.name)):'#2a3548';});var artHtml=alb.imgUrl?'<img src="'+alb.imgUrl+'" style="width:100%;height:100%;object-fit:cover;">':colors.length>=2?'<div class="album-art-grid">'+colors.slice(0,4).map(c=>'<div style="background:'+c+'"></div>').join('')+'</div>':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:'+(colors[0]||'#2a3548')+'">'+noteIco(36,'rgba(255,255,255,.4)')+'</div>';return '<div class="album-card" onclick="openAlbumDetail(\''+alb.id+'\')" data-lp-id="'+alb.id+'" data-lp-type="album"><div class="album-art">'+artHtml+'<button class="album-menu-btn" onclick="event.stopPropagation();openAlbumMenu(\''+alb.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button></div><div class="album-info"><p class="album-name">'+esc(alb.name)+'</p><p class="album-sub">'+alb.trackIds.length+' titre'+(alb.trackIds.length>1?'s':'')+'</p></div></div>';}).join('')+'<div class="album-new" onclick="newAlbum()"><svg width="28" height="28" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg><p>Nouvel album</p></div>';
+  setTimeout(()=>applyLongPressGlobal(),0);}
 
 function openAlbumMenu(id){var alb=albums.find(a=>a.id===id);if(!alb) return;showModal(`<div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">${esc(alb.name)}</div><div class="sheet-item" onclick="closeModal();openAlbumDetail('${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5z"/></svg>Ouvrir</div><div class="sheet-item" onclick="closeModal();renameAlbum('${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Renommer</div><div class="sheet-item" onclick="closeModal();setAlbumPhoto('${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>Changer la photo</div><div class="sheet-item" onclick="closeModal();openTrackPicker('album','${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Ajouter des titres</div><div class="sheet-item red" onclick="closeModal();deleteAlbum('${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="#ff4d4d"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</div></div>`);}
 
@@ -2768,6 +2781,106 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+
+// ── Long Press Engine (iOS-style) ──────────────────────────────────────
+var _lpTimer=null,_lpEl=null,_lpCancelled=false;
+var LP_DELAY=480; // ms avant déclenchement
+
+function initLongPress(el,onLongPress,onClick){
+  function start(e){
+    // Ignorer si clic sur un bouton enfant (menu ⋯, etc.)
+    if(e.target.closest('button')&&e.target.closest('button')!==el) return;
+    _lpCancelled=false;
+    _lpEl=el;
+    // Vibration légère au départ du press (si dispo)
+    if(navigator.vibrate) navigator.vibrate(10);
+    el.classList.add('lp-pressing');
+    _lpTimer=setTimeout(()=>{
+      if(_lpCancelled) return;
+      // Vibration de confirmation
+      if(navigator.vibrate) navigator.vibrate([0,0,40]);
+      el.classList.remove('lp-pressing');
+      el.style.transform='';
+      onLongPress(e);
+    },LP_DELAY);
+  }
+  function cancel(e){
+    clearTimeout(_lpTimer);
+    if(_lpEl) _lpEl.classList.remove('lp-pressing');
+    _lpCancelled=true;
+  }
+  function end(e){
+    if(_lpTimer){
+      clearTimeout(_lpTimer);
+      if(!_lpCancelled && el.classList.contains('lp-pressing')){
+        el.classList.remove('lp-pressing');
+        // C'était un tap court → exécuter le click normal
+        if(onClick) onClick(e);
+      } else if(!_lpCancelled){
+        // Timer déjà écoulé → long press géré, on ne re-click pas
+      }
+    }
+    _lpCancelled=true;
+    _lpEl=null;
+  }
+  el.addEventListener('touchstart',start,{passive:true});
+  el.addEventListener('touchend',end,{passive:true});
+  el.addEventListener('touchcancel',cancel,{passive:true});
+  el.addEventListener('touchmove',cancel,{passive:true});
+  // Fallback souris (desktop)
+  el.addEventListener('mousedown',start);
+  el.addEventListener('mouseup',end);
+  el.addEventListener('mouseleave',cancel);
+  // Bloquer le menu contextuel natif
+  el.addEventListener('contextmenu',e=>e.preventDefault());
+}
+
+// Applique le long press sur tous les éléments d'une classe après render
+function applyLongPress(containerSel,itemSel,getLongPressId,getClickFn){
+  var container=typeof containerSel==='string'?document.querySelector(containerSel):containerSel;
+  if(!container) return;
+  container.querySelectorAll(itemSel).forEach(function(el){
+    if(el.dataset.lpInit) return; // éviter double init
+    el.dataset.lpInit='1';
+    var id=el.dataset.lpId;
+    initLongPress(el,
+      function(e){ getLongPressId(e,id,el); }, // long press → menu
+      function(e){ if(getClickFn) getClickFn(e,id,el); } // tap court → action
+    );
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────
+
+// Applique le long press sur tous les éléments marqués dans la page
+function applyLongPressGlobal(){
+  // Morceaux (song-row)
+  document.querySelectorAll('.song-row[data-lp-id]:not([data-lp-init])').forEach(el=>{
+    el.dataset.lpInit='1';
+    var trackId=el.dataset.lpId;
+    initLongPress(el,
+      function(){ openTrackMenu({stopPropagation:()=>{}},trackId); },
+      null // le onclick inline gère le tap court
+    );
+  });
+  // Playlists (pl-card)
+  document.querySelectorAll('.pl-card[data-lp-id]:not([data-lp-init])').forEach(el=>{
+    el.dataset.lpInit='1';
+    var plId=el.dataset.lpId;
+    initLongPress(el,
+      function(){ openPlMenu({stopPropagation:()=>{}},plId); },
+      null
+    );
+  });
+  // Albums (album-card)
+  document.querySelectorAll('.album-card[data-lp-id]:not([data-lp-init])').forEach(el=>{
+    el.dataset.lpInit='1';
+    var albId=el.dataset.lpId;
+    initLongPress(el,
+      function(){ openAlbumMenu(albId); },
+      null
+    );
+  });
+}
 
 var modalEl=null;
 function showModal(html){closeModal();modalEl=document.createElement('div');modalEl.className='modal-bg';modalEl.innerHTML=html;modalEl.addEventListener('click',e=>{if(e.target===modalEl)closeModal();});document.body.appendChild(modalEl);}
