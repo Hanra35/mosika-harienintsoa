@@ -5,9 +5,6 @@ const APP_KEY = 'K003dwNhrjinpVEyi4VKsJxxZmL3LO4';
 const BUCKET  = 'melo-music-2026';
 const META    = 'melo-metadata.json';
 
-// 👇 Token Musixmatch (web-desktop-app-v1.0)
-const MUSIXMATCH_TOKEN = '2605cebe1ce741a292893ca977a106cdd39cbd5af82732947436';
-
 function setCors(res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -142,7 +139,7 @@ module.exports = async (req, res) => {
     const bid = await getBucketId(a);
 
     if (action === 'init') {
-      // fixCors retiré du chargement — trop lent, causait des timeouts au démarrage
+      // fixCors retiré — trop lent, causait des timeouts
       const meta = await readLatestMeta(a, bid);
       const dlR = await fetch(`${a.apiUrl}/b2api/v2/b2_get_download_authorization`, {
         method: 'POST',
@@ -185,7 +182,6 @@ module.exports = async (req, res) => {
 
     if (action === 'save-meta') {
       const body = req.body;
-      console.log('save-meta called, method:', req.method, 'body keys:', body ? Object.keys(body) : 'null');
       const tracks       = Array.isArray(body?.tracks)    ? body.tracks    : (Array.isArray(body) ? body : []);
       const playlists    = Array.isArray(body?.playlists)  ? body.playlists : [];
       const albums       = Array.isArray(body?.albums)     ? body.albums    : [];
@@ -213,203 +209,52 @@ module.exports = async (req, res) => {
       return;
     }
 
-    if (action === 'yt-search') {
-      const q = req.query?.q || '';
-      if (!q) { res.status(400).json({ error: 'Query manquante' }); return; }
-
-      const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
-
-      try {
-        const r = await fetch(
-          `https://www.youtube.com/youtubei/v1/search?key=${INNERTUBE_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              context: { client: { clientName: 'WEB', clientVersion: '2.20240101.00.00', hl: 'fr', gl: 'MG' } },
-              query: q
-            })
-          }
-        );
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const data = await r.json();
-
-        // Recherche récursive de tous les videoRenderer dans la réponse
-        const results = [];
-        const findVideos = (obj) => {
-          if (!obj || typeof obj !== 'object' || results.length >= 12) return;
-          if (obj.videoRenderer && obj.videoRenderer.videoId) {
-            const v = obj.videoRenderer;
-            const title  = v.title?.runs?.[0]?.text || v.title?.simpleText || '';
-            const artist = v.ownerText?.runs?.[0]?.text
-                        || v.shortBylineText?.runs?.[0]?.text || '';
-            const durTxt = v.lengthText?.simpleText || v.lengthText?.runs?.[0]?.text || '';
-            const secs   = durTxt ? durTxt.split(':').reduce((a,b) => a*60+parseInt(b), 0) : 0;
-            const thumbs = v.thumbnail?.thumbnails || [];
-            const thumb  = thumbs[thumbs.length-1]?.url || '';
-            if (title) results.push({ id: v.videoId, title, artist, duration: secs, thumb });
-            return;
-          }
-          if (Array.isArray(obj)) { obj.forEach(findVideos); return; }
-          Object.values(obj).forEach(findVideos);
-        };
-        findVideos(data);
-
-        res.status(200).json({ results });
-        return;
-      } catch(e) {
-        res.status(200).json({ results: [], error: e.message });
-        return;
-      }
-    }
-
-    if (action === 'yt-audio') {
-      const videoId = req.query?.id || '';
-      if (!videoId) { res.status(400).json({ error: 'ID manquant' }); return; }
-
-      const INNERTUBE_KEY = 'AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8';
-
-      // Essaie plusieurs clients InnerTube — ANDROID bloqué par Vercel
-      const clients = [
-        {
-          name: 'TVHTML5',
-          context: { client: { clientName: 'TVHTML5', clientVersion: '7.20240101.18.00', hl: 'fr', gl: 'MG' } },
-          headers: {}
-        },
-        {
-          name: 'IOS',
-          context: { client: {
-            clientName: 'IOS', clientVersion: '17.33.2',
-            deviceMake: 'Apple', deviceModel: 'iPhone16,2',
-            userAgent: 'com.google.ios.youtube/17.33.2 (iPhone16,2; U; CPU iOS 17_0 like Mac OS X)',
-            osName: 'iPhone', osVersion: '17.0.0', hl: 'fr', gl: 'MG'
-          }},
-          headers: { 'User-Agent': 'com.google.ios.youtube/17.33.2 (iPhone16,2; U; CPU iOS 17_0 like Mac OS X)' }
-        },
-        {
-          name: 'WEB_CREATOR',
-          context: { client: { clientName: 'WEB_CREATOR', clientVersion: '1.20240101.00.00', hl: 'fr', gl: 'MG' } },
-          headers: {}
-        }
-      ];
-
-      for (const c of clients) {
-        try {
-          const r = await fetch(
-            `https://www.youtube.com/youtubei/v1/player?key=${INNERTUBE_KEY}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...c.headers },
-              body: JSON.stringify({ context: c.context, videoId })
-            }
-          );
-          if (!r.ok) continue;
-          const data = await r.json();
-          if (data.playabilityStatus?.status !== 'OK') continue;
-
-          const formats = (data.streamingData?.adaptiveFormats || [])
-            .filter(f => f.mimeType?.startsWith('audio/') && f.url);
-          if (!formats.length) continue;
-
-          formats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-          const m4a  = formats.find(f => f.mimeType?.includes('mp4') || f.mimeType?.includes('m4a'));
-          const best = m4a || formats[0];
-
-          res.status(200).json({
-            url:    best.url,
-            type:   best.mimeType?.split(';')[0] || 'audio/mp4',
-            title:  data.videoDetails?.title  || '',
-            artist: data.videoDetails?.author || '',
-            client: c.name
-          });
-          return;
-        } catch(e) { continue; }
-      }
-
-      res.status(503).json({ error: 'Audio non disponible' });
-      return;
-    }
-
-    if (action === 'musixmatch') {
-      const track  = req.query?.track  || '';
-      const artist = req.query?.artist || '';
-      if (!track) { res.status(400).json({ error: 'Paramètre track manquant' }); return; }
-
-      const base = 'https://api.musixmatch.com/ws/1.1';
-      const tok  = MUSIXMATCH_TOKEN;
-      const qs   = `usertoken=${tok}&app_id=web-desktop-app-v1.0`;
-      const q    = encodeURIComponent(track) + (artist ? '&q_artist=' + encodeURIComponent(artist) : '');
-
-      try {
-        // 1. Cherche le track
-        const srRes  = await fetch(`${base}/track.search?q_track=${q}&page_size=5&page=1&s_track_rating=desc&${qs}`);
-        if (!srRes.ok) { res.status(200).json({ found: false, error: `search ${srRes.status}` }); return; }
-        const srData = await srRes.json();
-        const status = srData?.message?.header?.status_code;
-        if (status !== 200) { res.status(200).json({ found: false, error: `mxm_status ${status}` }); return; }
-
-        const trackList = srData?.message?.body?.track_list || [];
-        if (!trackList.length) { res.status(200).json({ found: false }); return; }
-
-        const trackId    = trackList[0].track.track_id;
-        const hasSubtitle = trackList[0].track.has_subtitles === 1;
-
-        if (!hasSubtitle) {
-          const lyRes  = await fetch(`${base}/track.lyrics.get?track_id=${trackId}&${qs}`);
-          const lyData = await lyRes.json();
-          const plain  = lyData?.message?.body?.lyrics?.lyrics_body || '';
-          res.status(200).json({ found: !!plain, synced: false, plain: plain.replace(/\*+.*$/s, '').trim() });
-          return;
-        }
-
-        // Paroles synchronisées (LRC)
-        const subRes  = await fetch(`${base}/track.subtitle.get?track_id=${trackId}&subtitle_format=lrc&${qs}`);
-        const subData = await subRes.json();
-        const lrc     = subData?.message?.body?.subtitle?.subtitle_body || '';
-        res.status(200).json({ found: !!lrc, synced: true, lrc });
-      } catch (err) {
-        res.status(200).json({ found: false, error: err.message });
-      }
-      return;
-    }
-
+    // ── ACTION STREAM ──────────────────────────────────────────────────────────
+    // Proxy le fichier B2 (audio ou image) vers le client.
+    // Supporte les Range requests pour le streaming audio progressif.
     if (action === 'stream') {
-      const key = req.query?.key;
+      const key = req.query.key;
       if (!key) { res.status(400).json({ error: 'Paramètre key manquant' }); return; }
 
-      const dlUrl = `${a.downloadUrl}/file/${BUCKET}/${key.split('/').map(encodeURIComponent).join('/')}`;
-      const rangeHeader = req.headers['range'];
+      const fileUrl = `${a.downloadUrl}/file/${BUCKET}/${key.split('/').map(encodeURIComponent).join('/')}`;
+      const headers = { Authorization: a.authorizationToken };
 
-      if (rangeHeader) {
-        // iOS Safari : requête partielle (Range) — obligatoire pour lire l'audio
-        const r = await fetch(dlUrl, {
-          headers: { Authorization: a.authorizationToken, Range: rangeHeader }
-        });
-        if (!r.ok && r.status !== 206) { res.status(r.status).end(); return; }
-        const contentType   = r.headers.get('content-type')   || 'audio/mpeg';
-        const contentRange  = r.headers.get('content-range')  || '';
-        const contentLength = r.headers.get('content-length') || '';
-        res.setHeader('Content-Type',  contentType);
-        res.setHeader('Accept-Ranges', 'bytes');
-        res.setHeader('Cache-Control', 'public, max-age=86400');
-        if (contentRange)  res.setHeader('Content-Range',  contentRange);
-        if (contentLength) res.setHeader('Content-Length', contentLength);
-        const buf = Buffer.from(await r.arrayBuffer());
-        res.status(206).send(buf);
+      // Transmettre le header Range si présent (streaming progressif)
+      if (req.headers.range) headers['Range'] = req.headers.range;
+
+      const upstream = await fetch(fileUrl, { headers });
+
+      if (!upstream.ok && upstream.status !== 206) {
+        res.status(upstream.status).json({ error: 'Fichier introuvable dans B2' });
         return;
       }
 
-      // Requête complète
-      const r = await fetch(dlUrl, { headers: { Authorization: a.authorizationToken } });
-      if (!r.ok) { res.status(r.status).json({ error: 'Fichier introuvable dans B2' }); return; }
-      const contentType   = r.headers.get('content-type')   || 'audio/mpeg';
-      const contentLength = r.headers.get('content-length') || '';
-      const buf = Buffer.from(await r.arrayBuffer());
-      res.setHeader('Content-Type',  contentType);
-      res.setHeader('Accept-Ranges', 'bytes');
+      // Copier les headers importants vers le client
+      const copyHeaders = [
+        'content-type', 'content-length', 'content-range',
+        'accept-ranges', 'last-modified', 'etag'
+      ];
+      copyHeaders.forEach(h => {
+        const v = upstream.headers.get(h);
+        if (v) res.setHeader(h, v);
+      });
+
+      // Autoriser la mise en cache navigateur (24h)
       res.setHeader('Cache-Control', 'public, max-age=86400');
-      if (contentLength) res.setHeader('Content-Length', contentLength);
-      res.status(200).send(buf);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+
+      res.status(upstream.status);
+
+      // Streamer le body au client
+      const reader = upstream.body.getReader();
+      const write = async () => {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) { res.end(); break; }
+          res.write(Buffer.from(value));
+        }
+      };
+      await write();
       return;
     }
 
@@ -428,3 +273,8 @@ module.exports.config = {
     },
   },
 };
+
+
+
+
+
