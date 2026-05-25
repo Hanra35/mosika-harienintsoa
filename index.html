@@ -2783,103 +2783,81 @@ if ('serviceWorker' in navigator) {
 
 // ── Long Press Engine (iOS-style) ──────────────────────────────────────
 var _lpTimer=null,_lpEl=null,_lpCancelled=false;
-var LP_DELAY=480; // ms avant déclenchement
+// ── Long Press Engine v3 ─────────────────────────────────────────────────
+var LP_DELAY = 500;
+var _lp = { timer: null, el: null, startX: 0, startY: 0, justFired: false };
 
-function initLongPress(el,onLongPress,onClick){
-  function start(e){
-    // Ignorer si clic sur un bouton enfant (menu ⋯, etc.)
-    if(e.target.closest('button')&&e.target.closest('button')!==el) return;
-    _lpCancelled=false;
-    _lpEl=el;
-    // Vibration légère au départ du press (si dispo)
-    if(navigator.vibrate) navigator.vibrate(10);
-    el.classList.add('lp-pressing');
-    _lpTimer=setTimeout(()=>{
-      if(_lpCancelled) return;
-      // Vibration de confirmation
-      if(navigator.vibrate) navigator.vibrate([0,0,40]);
+(function(){
+  // Un seul listener touchstart sur document (délégation)
+  document.addEventListener('touchstart', function(e) {
+    // Ignorer boutons enfants (⋯, etc.) mais pas l'élément LP lui-même
+    var lpEl = e.target.closest('[data-lp-id]');
+    if (!lpEl) return;
+    if (e.target.tagName === 'BUTTON' && !e.target.hasAttribute('data-lp-id')) return;
+    if (e.touches.length > 1) return;
+
+    _lp.el      = lpEl;
+    _lp.startX  = e.touches[0].clientX;
+    _lp.startY  = e.touches[0].clientY;
+    _lp.justFired = false;
+
+    lpEl.classList.add('lp-pressing');
+
+    _lp.timer = setTimeout(function() {
+      if (!_lp.el) return;           // annulé entre-temps
+      var el = _lp.el;
+      _lp.el = null;
+      _lp.justFired = true;          // marquer avant le fire
       el.classList.remove('lp-pressing');
-      el.style.transform='';
-      onLongPress(e);
-    },LP_DELAY);
-  }
-  function cancel(e){
-    clearTimeout(_lpTimer);
-    if(_lpEl) _lpEl.classList.remove('lp-pressing');
-    _lpCancelled=true;
-  }
-  function end(e){
-    if(_lpTimer){
-      clearTimeout(_lpTimer);
-      if(!_lpCancelled && el.classList.contains('lp-pressing')){
-        el.classList.remove('lp-pressing');
-        // C'était un tap court → exécuter le click normal
-        if(onClick) onClick(e);
-      } else if(!_lpCancelled){
-        // Timer déjà écoulé → long press géré, on ne re-click pas
-      }
+      if (navigator.vibrate) navigator.vibrate(50);
+      _lpFire(el);
+    }, LP_DELAY);
+  }, { passive: true });
+
+  document.addEventListener('touchmove', function(e) {
+    if (!_lp.el) return;
+    var dx = e.touches[0].clientX - _lp.startX;
+    var dy = e.touches[0].clientY - _lp.startY;
+    if (dx*dx + dy*dy > 64) _lpReset(); // > 8px → annuler
+  }, { passive: true });
+
+  document.addEventListener('touchend',    _lpReset, { passive: true });
+  document.addEventListener('touchcancel', _lpReset, { passive: true });
+
+  // Bloquer le click qui suit immédiatement un long press
+  document.addEventListener('click', function(e) {
+    if (_lp.justFired) {
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      // Réinitialiser après un court délai (le click arrive ~300ms après touchend)
+      setTimeout(function(){ _lp.justFired = false; }, 100);
     }
-    _lpCancelled=true;
-    _lpEl=null;
-  }
-  el.addEventListener('touchstart',start,{passive:true});
-  el.addEventListener('touchend',end,{passive:true});
-  el.addEventListener('touchcancel',cancel,{passive:true});
-  el.addEventListener('touchmove',cancel,{passive:true});
-  // Fallback souris (desktop)
-  el.addEventListener('mousedown',start);
-  el.addEventListener('mouseup',end);
-  el.addEventListener('mouseleave',cancel);
-  // Bloquer le menu contextuel natif
-  el.addEventListener('contextmenu',e=>e.preventDefault());
+  }, true); // capture phase — avant les onclick inline
+
+  document.addEventListener('contextmenu', function(e) {
+    if (e.target.closest('[data-lp-id]')) e.preventDefault();
+  });
+})();
+
+function _lpReset() {
+  clearTimeout(_lp.timer);
+  if (_lp.el) { _lp.el.classList.remove('lp-pressing'); _lp.el = null; }
 }
 
-// Applique le long press sur tous les éléments d'une classe après render
-function applyLongPress(containerSel,itemSel,getLongPressId,getClickFn){
-  var container=typeof containerSel==='string'?document.querySelector(containerSel):containerSel;
-  if(!container) return;
-  container.querySelectorAll(itemSel).forEach(function(el){
-    if(el.dataset.lpInit) return; // éviter double init
-    el.dataset.lpInit='1';
-    var id=el.dataset.lpId;
-    initLongPress(el,
-      function(e){ getLongPressId(e,id,el); }, // long press → menu
-      function(e){ if(getClickFn) getClickFn(e,id,el); } // tap court → action
-    );
-  });
+function _lpFire(el) {
+  var type = el.dataset.lpType;
+  var id   = el.dataset.lpId;
+  var fakeEvt = { stopPropagation: function(){} };
+  if      (type === 'track')    openTrackMenu(fakeEvt, id);
+  else if (type === 'playlist') openPlMenu(fakeEvt, id);
+  else if (type === 'album')    openAlbumMenu(id);
 }
+
+// Ces fonctions sont des no-ops — la délégation gère tout automatiquement
+function applyLongPressGlobal() {}
+function applyLongPress() {}
+function initLongPress() {}
 // ─────────────────────────────────────────────────────────────────────────
-
-// Applique le long press sur tous les éléments marqués dans la page
-function applyLongPressGlobal(){
-  // Morceaux (song-row)
-  document.querySelectorAll('.song-row[data-lp-id]:not([data-lp-init])').forEach(el=>{
-    el.dataset.lpInit='1';
-    var trackId=el.dataset.lpId;
-    initLongPress(el,
-      function(){ openTrackMenu({stopPropagation:()=>{}},trackId); },
-      null // le onclick inline gère le tap court
-    );
-  });
-  // Playlists (pl-card)
-  document.querySelectorAll('.pl-card[data-lp-id]:not([data-lp-init])').forEach(el=>{
-    el.dataset.lpInit='1';
-    var plId=el.dataset.lpId;
-    initLongPress(el,
-      function(){ openPlMenu({stopPropagation:()=>{}},plId); },
-      null
-    );
-  });
-  // Albums (album-card)
-  document.querySelectorAll('.album-card[data-lp-id]:not([data-lp-init])').forEach(el=>{
-    el.dataset.lpInit='1';
-    var albId=el.dataset.lpId;
-    initLongPress(el,
-      function(){ openAlbumMenu(albId); },
-      null
-    );
-  });
-}
 
 var modalEl=null;
 function showModal(html){closeModal();modalEl=document.createElement('div');modalEl.className='modal-bg';modalEl.innerHTML=html;modalEl.addEventListener('click',e=>{if(e.target===modalEl)closeModal();});document.body.appendChild(modalEl);}
