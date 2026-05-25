@@ -550,12 +550,45 @@
 <div id="s-import" class="screen hidden">
   <div style="padding:calc(var(--safe-t)+18px) 20px 4px;"><span class="home-title">Importer</span></div>
   <div class="imp-scroll">
-    <div class="dropzone" id="dz">
-      <div class="dz-ico"><svg width="26" height="26" viewBox="0 0 24 24" fill="var(--acc)"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg></div>
-      <p class="dz-title">Ajouter des musiques</p>
-      <p class="dz-sub">Appuyez pour parcourir vos fichiers</p>
-      <p style="font-size:11px;color:var(--sub);font-family:monospace">MP3 · WAV · FLAC · OGG · AAC · M4A</p>
+
+    <!-- Bouton principal iOS → Fichiers -->
+    <div style="padding:0 18px 12px;">
+      <button onclick="document.getElementById('filein').click()" style="width:100%;background:var(--acc);border:none;border-radius:18px;padding:18px 20px;display:flex;align-items:center;gap:14px;cursor:pointer;box-shadow:var(--sh-acc);">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M20 6h-8l-2-2H4a2 2 0 00-2 2v12a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2zm-6 10H9v-2h5v2zm3-4H9v-2h8v2z"/></svg>
+        <div style="text-align:left;">
+          <p style="color:#fff;font-size:16px;font-weight:600;font-family:'Josefin Sans',sans-serif;letter-spacing:.5px;">Choisir depuis Fichiers</p>
+          <p style="color:rgba(255,255,255,.72);font-size:11px;margin-top:2px;letter-spacing:1px;font-family:'Josefin Sans',sans-serif;">MP3 · FLAC · AAC · WAV · M4A</p>
+        </div>
+        <svg style="margin-left:auto;flex-shrink:0;" width="20" height="20" viewBox="0 0 24 24" fill="rgba(255,255,255,.8)"><path d="M9 18l6-6-6-6"/></svg>
+      </button>
     </div>
+
+    <!-- Guide Xender → Fichiers -->
+    <div style="margin:0 18px 16px;background:var(--card2);border-radius:16px;padding:16px;border:1px solid var(--border);">
+      <p style="font-size:12px;font-weight:600;color:var(--acc);letter-spacing:1.5px;text-transform:uppercase;font-family:'Josefin Sans',sans-serif;margin-bottom:12px;">📲 Depuis Xender</p>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <span style="background:var(--acc);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:'Josefin Sans',sans-serif;">1</span>
+          <p style="font-size:13px;color:var(--text);line-height:1.4;font-family:'Josefin Sans',sans-serif;">Ouvre <b>Xender</b> → appuie sur ta musique → icône <b>···</b> → <b>Enregistrer dans Fichiers</b></p>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <span style="background:var(--acc);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:'Josefin Sans',sans-serif;">2</span>
+          <p style="font-size:13px;color:var(--text);line-height:1.4;font-family:'Josefin Sans',sans-serif;">Choisis <b>Sur mon iPhone</b> comme destination</p>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <span style="background:var(--acc);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;font-family:'Josefin Sans',sans-serif;">3</span>
+          <p style="font-size:13px;color:var(--text);line-height:1.4;font-family:'Josefin Sans',sans-serif;">Reviens ici → <b>Choisir depuis Fichiers</b> → navigue jusqu'à tes musiques → appuie longtemps sur un fichier puis <b>Sélectionner</b> pour en choisir plusieurs</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zone drop desktop -->
+    <div class="dropzone" id="dz" style="margin:0 18px 16px;">
+      <div class="dz-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="var(--acc)"><path d="M9 16h6v-6h4l-7-7-7 7h4zm-4 2h14v2H5z"/></svg></div>
+      <p class="dz-title" style="font-size:13px;">Glisser-déposer</p>
+      <p class="dz-sub" style="font-size:11px;">Sur desktop uniquement</p>
+    </div>
+
     <div class="uplist" id="uplist"></div>
     <input id="filein" type="file" multiple accept="audio/*,.mp3,.wav,.ogg,.flac,.aac,.m4a" style="display:none">
   </div>
