@@ -325,6 +325,10 @@
     .eq-val{font-size:10px;color:var(--sub);min-width:24px;text-align:center;}
     .eq-preset{padding:7px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s;}
     .eq-preset.active{background:rgba(45,126,248,.2);border-color:var(--acc);color:var(--acc);}
+    /* ── ÉCRAN PAROLES COMPLET ── */
+    #s-lyrics{background:var(--bg);z-index:150;}
+    #s-lyrics .lyrics-page-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
+    #s-lyrics .lyrics-page-lines{padding:45vh 24px;min-height:100%;}
     .lrc-line{font-size:24px;font-weight:700;color:rgba(255,255,255,.28);line-height:1.45;padding:10px 0;transition:color .25s ease,opacity .25s ease,transform .25s ease,font-size .25s ease;cursor:pointer;transform-origin:left center;}
     .lrc-line.active{color:#fff;opacity:1;font-weight:800;font-size:28px;transform:scale(1.04);}
     .lrc-line.past{color:rgba(255,255,255,.22);opacity:1;}
@@ -929,6 +933,24 @@
   </button>
 </div>
 
+
+<!-- ÉCRAN PAROLES COMPLET -->
+<div id="s-lyrics" class="screen hidden">
+  <div style="padding:calc(var(--safe-t)+14px) 20px 10px;display:flex;align-items:center;gap:14px;flex-shrink:0;">
+    <button onclick="closeLyricsScreen()" style="background:var(--card);border:none;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="var(--text)"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+    </button>
+    <div style="flex:1;min-width:0;">
+      <p id="lp-title" style="font-size:15px;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:0;"></p>
+      <p id="lp-artist" style="font-size:12px;color:var(--sub);margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+    </div>
+    <button onclick="openLyricsEditor()" style="background:var(--card2);border:none;border-radius:20px;padding:6px 14px;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;">✏️ Modifier</button>
+  </div>
+  <div class="lyrics-page-scroll" id="lyrics-page-scroll">
+    <div class="lyrics-page-lines" id="lyrics-page-lines"></div>
+  </div>
+</div>
+
 </div><!-- /#bottom-wrap -->
 <!-- Player YouTube embed — hors de tout écran pour éviter les blocages iOS -->
 <div id="yt-embed-container" style="position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;pointer-events:none;z-index:-999;overflow:hidden;">
@@ -1429,6 +1451,8 @@ function loadLyricsForTrack(){
   el.innerHTML=lrcLines.map((l,i)=>`<div class="lrc-line" id="lrc-${i}" onclick="aud.currentTime=${l.time}">${esc(l.text)}</div>`).join('');
   if(lyricsCard) lyricsCard.style.display='block';
   buildLyricsPreview();
+  // Refresh page paroles si ouverte
+  var lyricsScreen=document.getElementById('s-lyrics');var dest=document.getElementById('lyrics-page-lines');if(lyricsScreen&&!lyricsScreen.classList.contains('hidden')&&dest){dest.innerHTML=el.innerHTML;}
 }
 
 function updateLyricsSync(ct){
@@ -1448,16 +1472,20 @@ function updateLyricsSync(ct){
   });
   // Update preview card
   renderLyricsPreview();
-  // Auto-scroll centré sur la ligne active
-  var fullCard = document.getElementById('p-lyrics-full-card');
-  if(newIdx>=0 && fullCard && fullCard.style.display!=='none'){
-    var activeLine=document.getElementById('lrc-'+newIdx);
-    var lyricsScroll=document.getElementById('lyrics-scroll');
-    if(activeLine&&lyricsScroll){
-      var lyricsLines = document.getElementById('lyrics-lines');
-      var lineTop = activeLine.offsetTop + (lyricsLines ? lyricsLines.offsetTop : 0);
-      var target = lineTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
-      lyricsScroll.scrollTo({top: Math.max(0, target), behavior: 'smooth'});
+  // Sync page paroles si ouverte
+  var lyricsScreen=document.getElementById('s-lyrics');
+  if(newIdx>=0 && lyricsScreen && !lyricsScreen.classList.contains('hidden')){
+    var dest=document.getElementById('lyrics-page-lines');
+    // Met à jour les classes active/past sur la page paroles
+    dest.querySelectorAll('.lrc-line').forEach(function(el,i){
+      el.classList.toggle('active',i===newIdx);
+      el.classList.toggle('past',i<newIdx);
+    });
+    var activeLine=dest.querySelector('.lrc-line.active');
+    var scroll=document.getElementById('lyrics-page-scroll');
+    if(activeLine&&scroll){
+      var target=activeLine.offsetTop-(scroll.clientHeight/2)+(activeLine.offsetHeight/2);
+      scroll.scrollTo({top:Math.max(0,target),behavior:'smooth'});
     }
   }
 }
@@ -1719,7 +1747,7 @@ function forceReload(){
 function switchHomeTab(tab){activeHomeTab=tab;['overview','tracks','albums'].forEach(t=>{document.getElementById('tab-'+(t==='overview'?'overview':t==='tracks'?'tracks':'albums')).classList.toggle('active',t===tab);document.getElementById('ts-'+t).classList.toggle('active',t===tab);});if(tab==='tracks') renderTracks();if(tab==='albums') renderAlbumsGrid();}
 
 /* SCREENS */
-const SCREENS={home:'s-home',playlists:'s-playlists',artists:'s-artists',import:'s-import',pldetail:'s-pldetail',albumdetail:'s-albumdetail',artistdetail:'s-artistdetail',player:'s-player',storage:'s-storage','cached-tracks':'s-cached-tracks',discover:'s-discover'};
+const SCREENS={home:'s-home',playlists:'s-playlists',artists:'s-artists',import:'s-import',pldetail:'s-pldetail',albumdetail:'s-albumdetail',artistdetail:'s-artistdetail',player:'s-player',storage:'s-storage','cached-tracks':'s-cached-tracks',discover:'s-discover',lyrics:'s-lyrics'};
 
 var activeScreen='home';
 function showScreen(name,fromLeft){fromLeft=fromLeft||false;var prev=document.getElementById(SCREENS[activeScreen]);var next=document.getElementById(SCREENS[name]);if(!next||prev===next) return;
@@ -2635,53 +2663,32 @@ function renderPlayerUpNext(){
 }
 
 /* ── Expand / collapse lyrics ── */
-function expandLyrics(){
-  document.getElementById('p-lyrics-card').style.display='none';
-  document.getElementById('p-lyrics-full-card').style.display='block';
-  renderLrcLines();
-  // Attacher le listener user-scroll (une seule fois)
+function expandLyrics(){ openLyricsScreen(); }
+function openLyricsScreen(){
+  var t=cur!==null?tracks[cur]:null;
+  document.getElementById('lp-title').textContent=t?t.name:'';
+  document.getElementById('lp-artist').textContent=t?t.artist:'';
+  // Copie les lignes dans la nouvelle page
+  var dest=document.getElementById('lyrics-page-lines');
+  var src=document.getElementById('lyrics-lines');
+  dest.innerHTML=src.innerHTML;
+  // Montre l'écran
+  var lyricsScreen=document.getElementById('s-lyrics');
+  lyricsScreen.classList.remove('hidden');
+  // Scroll immédiat vers la ligne active
   requestAnimationFrame(function(){
-    var lyricsScroll = document.getElementById('lyrics-scroll');
-    if(lyricsScroll && !lyricsScroll._scrollListenerAttached){
-      lyricsScroll._scrollListenerAttached = true;
-      lyricsScroll._userScrolling = false;
-      lyricsScroll._scrollTimer = null;
-      lyricsScroll.addEventListener('touchstart', function(){
-        lyricsScroll._userScrolling = true;
-        clearTimeout(lyricsScroll._scrollTimer);
-      }, {passive: true});
-      lyricsScroll.addEventListener('touchend', function(){
-        clearTimeout(lyricsScroll._scrollTimer);
-        lyricsScroll._scrollTimer = setTimeout(function(){
-          lyricsScroll._userScrolling = false;
-        }, 800);
-      }, {passive: true});
-    }
-  });
-  // Scroll vers la ligne active immédiatement
-  requestAnimationFrame(function(){
-    var activeIdx = lrcActiveIdx >= 0 ? lrcActiveIdx : 0;
-    var activeLine = document.getElementById('lrc-'+activeIdx);
-    var lyricsScroll = document.getElementById('lyrics-scroll');
-    if(activeLine && lyricsScroll){
-      var lyricsLines = document.getElementById('lyrics-lines');
-      var lineTop = activeLine.offsetTop + (lyricsLines ? lyricsLines.offsetTop : 0);
-      var target = lineTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
-      lyricsScroll.scrollTop = Math.max(0, target);
-    }
-    // Aussi scroller le player pour montrer les paroles
-    var playerScroll = document.getElementById('player-scroll-el');
-    var fullCard = document.getElementById('p-lyrics-full-card');
-    if(playerScroll && fullCard){
-      playerScroll.scrollTo({top: fullCard.offsetTop - 20, behavior:'smooth'});
+    var scroll=document.getElementById('lyrics-page-scroll');
+    var activeIdx=lrcActiveIdx>=0?lrcActiveIdx:0;
+    var activeLine=dest.querySelector('#lrc-'+activeIdx);
+    if(activeLine&&scroll){
+      var target=activeLine.offsetTop-(scroll.clientHeight/2)+(activeLine.offsetHeight/2);
+      scroll.scrollTop=Math.max(0,target);
     }
   });
 }
-function collapseLyrics(){
-  document.getElementById('p-lyrics-full-card').style.display='none';
-  // Ne montrer la carte preview que si des paroles existent
-  var hasLyrics = lrcLines.length > 0 || (cur!==null && tracks[cur] && tracks[cur].lrc && tracks[cur].lrc.trim().length>5);
-  document.getElementById('p-lyrics-card').style.display = hasLyrics ? 'block' : 'none';
+function collapseLyrics(){ closeLyricsScreen(); }
+function closeLyricsScreen(){
+  document.getElementById('s-lyrics').classList.add('hidden');
 }
 
 /* ── Queue sheet (remplace openUpNext) ── */
