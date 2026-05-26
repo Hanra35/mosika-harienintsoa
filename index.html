@@ -330,7 +330,7 @@
     .lrc-line.past{color:rgba(255,255,255,.22);opacity:1;}
     .lrc-line.plain{color:rgba(255,255,255,.75);font-size:20px;font-weight:600;cursor:default;padding:7px 0;line-height:1.6;}
     /* padding haut/bas pour centrer la 1ère et dernière ligne */
-    #lyrics-lines{padding:35vh 0;}
+    #lyrics-lines{padding:40px 0 40px;}
     .lyrics-empty{text-align:center;padding:24px 0;color:var(--sub);font-size:14px;line-height:1.7;}
     /* Lyrics editor modal */
     .lrc-editor-wrap{padding:0 18px 18px;}
@@ -1454,7 +1454,9 @@ function updateLyricsSync(ct){
     var activeLine=document.getElementById('lrc-'+newIdx);
     var lyricsScroll=document.getElementById('lyrics-scroll');
     if(activeLine&&lyricsScroll){
-      var target = activeLine.offsetTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
+      var lyricsLines = document.getElementById('lyrics-lines');
+      var lineTop = activeLine.offsetTop + (lyricsLines ? lyricsLines.offsetTop : 0);
+      var target = lineTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
       lyricsScroll.scrollTo({top: Math.max(0, target), behavior: 'smooth'});
     }
   }
@@ -2662,7 +2664,9 @@ function expandLyrics(){
     var activeLine = document.getElementById('lrc-'+activeIdx);
     var lyricsScroll = document.getElementById('lyrics-scroll');
     if(activeLine && lyricsScroll){
-      var target = activeLine.offsetTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
+      var lyricsLines = document.getElementById('lyrics-lines');
+      var lineTop = activeLine.offsetTop + (lyricsLines ? lyricsLines.offsetTop : 0);
+      var target = lineTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
       lyricsScroll.scrollTop = Math.max(0, target);
     }
     // Aussi scroller le player pour montrer les paroles
