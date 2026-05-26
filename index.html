@@ -164,7 +164,8 @@
     .albums-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;padding:0 16px 10px;}
     .album-card{background:var(--card);border-radius:20px;overflow:hidden;cursor:pointer;box-shadow:var(--sh2);position:relative;border:1px solid var(--border);}
     .album-card:active{transform:scale(.97);}
-    .album-art{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;}
+    .album-art{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+    .album-art img.art-cover{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;}
     .album-art-grid{display:grid;grid-template-columns:1fr 1fr;gap:2px;width:100%;height:100%;}
     .album-art-grid div{width:100%;height:100%;}
     .album-info{padding:10px 12px;}
@@ -1902,7 +1903,7 @@ function setSortMode(m){sortMode=m;updateSortLabel();closeModal();renderTracks()
 
 function renderTracks(){var q=(document.getElementById('track-search')?.value||'').toLowerCase().trim();var list=q?tracks.filter(t=>(t.name+t.artist).toLowerCase().includes(q)):tracks;list=getSortedTracks(list);var el=document.getElementById('song-list-tracks'),lc=document.getElementById('tracks-count');if(!tracks.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">${noteIco(34,'var(--sub)')}</div><p class="empty-title">Aucun titre</p></div>`;return;}lc.textContent=list.length+(q?' résultat'+(list.length>1?'s':''):' titre'+(list.length>1?'s':''));el.innerHTML=list.map(t=>{var i=tracks.indexOf(t);return songRowHtml(t,i,`rowClick(event,${i})`,`openTrackMenu(event,'${t.id}')`,null);}).join('');setTimeout(()=>applyLongPressGlobal(),0);}
 
-function renderAlbumsGrid(){var el=document.getElementById('albums-grid');el.innerHTML=albums.map(alb=>{var colors=alb.trackIds.slice(0,4).map(id=>{var t=tracks.find(x=>x.id===id);return t?abg(t.hue||hue(t.name)):'#2a3548';});var artHtml=alb.imgUrl?'<img src="'+alb.imgUrl+'" style="width:100%;height:100%;object-fit:cover;">':colors.length>=2?'<div class="album-art-grid">'+colors.slice(0,4).map(c=>'<div style="background:'+c+'"></div>').join('')+'</div>':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:'+(colors[0]||'#2a3548')+'">'+noteIco(36,'rgba(255,255,255,.4)')+'</div>';return '<div class="album-card" onclick="openAlbumDetail(\''+alb.id+'\')" data-lp-id="'+alb.id+'" data-lp-type="album"><div class="album-art">'+artHtml+'<button class="album-menu-btn" onclick="event.stopPropagation();openAlbumMenu(\''+alb.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button></div><div class="album-info"><p class="album-name">'+esc(alb.name)+'</p><p class="album-sub">'+alb.trackIds.length+' titre'+(alb.trackIds.length>1?'s':'')+'</p></div></div>';}).join('')+'<div class="album-new" onclick="newAlbum()"><svg width="28" height="28" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg><p>Nouvel album</p></div>';
+function renderAlbumsGrid(){var el=document.getElementById('albums-grid');el.innerHTML=albums.map(alb=>{var colors=alb.trackIds.slice(0,4).map(id=>{var t=tracks.find(x=>x.id===id);return t?abg(t.hue||hue(t.name)):'#2a3548';});var artHtml=alb.imgUrl?'<img class="art-cover" src="'+alb.imgUrl+'">':colors.length>=2?'<div class="album-art-grid">'+colors.slice(0,4).map(c=>'<div style="background:'+c+'"></div>').join('')+'</div>':'<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:'+(colors[0]||'#2a3548')+'">'+noteIco(36,'rgba(255,255,255,.4)')+'</div>';return '<div class="album-card" onclick="openAlbumDetail(\''+alb.id+'\')" data-lp-id="'+alb.id+'" data-lp-type="album"><div class="album-art">'+artHtml+'<button class="album-menu-btn" onclick="event.stopPropagation();openAlbumMenu(\''+alb.id+'\')"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M6 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm12 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm-6 0c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button></div><div class="album-info"><p class="album-name">'+esc(alb.name)+'</p><p class="album-sub">'+alb.trackIds.length+' titre'+(alb.trackIds.length>1?'s':'')+'</p></div></div>';}).join('')+'<div class="album-new" onclick="newAlbum()"><svg width="28" height="28" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg><p>Nouvel album</p></div>';
   setTimeout(()=>applyLongPressGlobal(),0);}
 
 function openAlbumMenu(id){var alb=albums.find(a=>a.id===id);if(!alb) return;showModal(`<div class="sheet"><div class="sheet-handle"></div><div class="sheet-title">${esc(alb.name)}</div><div class="sheet-item" onclick="closeModal();openAlbumDetail('${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5z"/></svg>Ouvrir</div><div class="sheet-item" onclick="closeModal();renameAlbum('${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Renommer</div><div class="sheet-item" onclick="closeModal();setAlbumPhoto('${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>Changer la photo</div><div class="sheet-item" onclick="closeModal();openTrackPicker('album','${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="var(--sub)"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Ajouter des titres</div><div class="sheet-item red" onclick="closeModal();deleteAlbum('${id}')"><svg width="20" height="20" viewBox="0 0 24 24" fill="#ff4d4d"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>Supprimer</div></div>`);}
@@ -2106,7 +2107,7 @@ function removeFromArtist(e,artId,tid){e.stopPropagation();var ar=artists.find(a
 
 
 function renderArtistDetail(){var el=document.getElementById('artd-scroll');if(!currentArtist){el.innerHTML='';return;}var h=currentArtist.hue||hue(currentArtist.name);var artTracks=currentArtist.trackIds.map(id=>tracks.find(t=>t.id===id)).filter(Boolean);var artAlbums=currentArtist.albumIds.map(id=>albums.find(a=>a.id===id)).filter(Boolean);
-var albumsHtml=artAlbums.length?`<p class="artd-section">Albums</p><div class="albums-grid" style="padding:0 0 10px">`+artAlbums.map(alb=>{var firstImg=alb.imgUrl?resolveImgUrl(alb.imgUrl):null;if(!firstImg){var ft=alb.trackIds.map(id=>tracks.find(x=>x.id===id)).find(t=>t&&t.imgUrl);if(ft) firstImg=resolveImgUrl(ft.imgUrl);}var aHtml=firstImg?`<div style="width:100%;height:100%;background-image:url('${firstImg}');background-size:cover;background-position:center"></div>`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#2a3548">${noteIco(36,'rgba(255,255,255,.4)')}</div>`;return `<div class="album-card" onclick="openAlbumDetail('${alb.id}')"><div class="album-art">${aHtml}</div><div class="album-info"><p class="album-name">${esc(alb.name)}</p></div></div>`;}).join('')+'</div>':'';
+var albumsHtml=artAlbums.length?`<p class="artd-section">Albums</p><div class="albums-grid" style="padding:0 0 10px">`+artAlbums.map(alb=>{var firstImg=alb.imgUrl?resolveImgUrl(alb.imgUrl):null;if(!firstImg){var ft=alb.trackIds.map(id=>tracks.find(x=>x.id===id)).find(t=>t&&t.imgUrl);if(ft) firstImg=resolveImgUrl(ft.imgUrl);}var aHtml=firstImg?`<img class="art-cover" src="${firstImg}" onerror="this.style.display='none'">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#2a3548">${noteIco(36,'rgba(255,255,255,.4)')}</div>`;return `<div class="album-card" onclick="openAlbumDetail('${alb.id}')"><div class="album-art">${aHtml}</div><div class="album-info"><p class="album-name">${esc(alb.name)}</p></div></div>`;}).join('')+'</div>':'';
 var tracksHtml=artTracks.length?`<p class="artd-section">Titres</p><div class="song-list">`+artTracks.map(t=>{var ri=tracks.indexOf(t);return songRowHtml(t,ri,`rowClick(event,${ri})`,`openTrackMenu(event,'${t.id}')`,`removeFromArtist(event,'${currentArtist.id}','${t.id}')`);}).join('')+'</div>':'';
 // Empty state avec boutons d'action
 var emptyHtml='';
@@ -2489,6 +2490,10 @@ function applyPlayerColor(rgb){
   var lyricsFullInner = document.getElementById('p-lyrics-full-inner');
   if(!rgb){
     pl.style.background = '';
+    pl.style.removeProperty('--text');
+    pl.style.removeProperty('--sub');
+    pl.style.removeProperty('--acc');
+    pl.style.removeProperty('--acc2');
     if(lyricsCardInner) lyricsCardInner.style.background = 'rgba(255,255,255,.06)';
     if(lyricsFullInner) lyricsFullInner.style.background = 'rgba(255,255,255,.06)';
     return;
@@ -2499,6 +2504,21 @@ function applyPlayerColor(rgb){
   pl.style.background = 'linear-gradient(180deg,rgb('+dr+','+dg+','+db+') 0%,rgb(10,10,16) 62%)';
   if(lyricsCardInner) lyricsCardInner.style.background = 'rgb('+mr+','+mg+','+mb+')';
   if(lyricsFullInner) lyricsFullInner.style.background = 'rgb('+mr+','+mg+','+mb+')';
+  // Adapte les couleurs de texte selon la luminosite du fond
+  var lum = (0.299*dr + 0.587*dg + 0.114*db) / 255;
+  if(lum > 0.42){
+    // Fond clair (jaune, vert clair...) -> texte sombre pour contraste
+    pl.style.setProperty('--text','#1a1200');
+    pl.style.setProperty('--sub','rgba(20,12,0,0.60)');
+    pl.style.setProperty('--acc','#2c1e00');
+    pl.style.setProperty('--acc2','#3d2a00');
+  } else {
+    // Fond sombre -> texte clair (defaut)
+    pl.style.removeProperty('--text');
+    pl.style.removeProperty('--sub');
+    pl.style.removeProperty('--acc');
+    pl.style.removeProperty('--acc2');
+  }
 }
 
 /* ── Lyrics preview — rendu stable, mise à jour de classes seulement ── */
