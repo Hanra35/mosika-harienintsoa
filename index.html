@@ -326,7 +326,8 @@
     .eq-preset{padding:7px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s;}
     .eq-preset.active{background:rgba(45,126,248,.2);border-color:var(--acc);color:var(--acc);}
     /* ── ÉCRAN PAROLES COMPLET ── */
-    #s-lyrics{background:var(--bg);z-index:150;transition:background .4s ease;}
+    #s-lyrics{position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;background:var(--bg);transition:background .35s ease,transform .35s cubic-bezier(.4,0,.2,1);}
+    #s-lyrics.hidden{transform:translateY(100%) !important;pointer-events:none;}
     #s-lyrics .lyrics-page-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}
     #s-lyrics .lyrics-page-lines{padding:45vh 28px 45vh;}
     .lrc-line{font-size:24px;font-weight:700;color:rgba(255,255,255,.45);line-height:1.45;padding:10px 0;transition:color .25s ease,opacity .25s ease,transform .25s ease,font-size .25s ease;cursor:pointer;transform-origin:left center;}
@@ -935,7 +936,7 @@
 
 
 <!-- ÉCRAN PAROLES COMPLET -->
-<div id="s-lyrics" class="screen hidden">
+<div id="s-lyrics" class="hidden">
   <!-- Header fixe -->
   <div style="padding:calc(var(--safe-t)+12px) 20px 8px;display:flex;align-items:center;gap:12px;flex-shrink:0;">
     <button onclick="closeLyricsScreen()" style="background:rgba(0,0,0,.22);border:none;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;backdrop-filter:blur(8px);">
@@ -1749,7 +1750,7 @@ function forceReload(){
 function switchHomeTab(tab){activeHomeTab=tab;['overview','tracks','albums'].forEach(t=>{document.getElementById('tab-'+(t==='overview'?'overview':t==='tracks'?'tracks':'albums')).classList.toggle('active',t===tab);document.getElementById('ts-'+t).classList.toggle('active',t===tab);});if(tab==='tracks') renderTracks();if(tab==='albums') renderAlbumsGrid();}
 
 /* SCREENS */
-const SCREENS={home:'s-home',playlists:'s-playlists',artists:'s-artists',import:'s-import',pldetail:'s-pldetail',albumdetail:'s-albumdetail',artistdetail:'s-artistdetail',player:'s-player',storage:'s-storage','cached-tracks':'s-cached-tracks',discover:'s-discover',lyrics:'s-lyrics'};
+const SCREENS={home:'s-home',playlists:'s-playlists',artists:'s-artists',import:'s-import',pldetail:'s-pldetail',albumdetail:'s-albumdetail',artistdetail:'s-artistdetail',player:'s-player',storage:'s-storage','cached-tracks':'s-cached-tracks',discover:'s-discover'};
 
 var activeScreen='home';
 function showScreen(name,fromLeft){fromLeft=fromLeft||false;var prev=document.getElementById(SCREENS[activeScreen]);var next=document.getElementById(SCREENS[name]);if(!next||prev===next) return;
