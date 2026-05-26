@@ -707,7 +707,7 @@
         <p style="font-size:11px;font-weight:800;color:rgba(255,255,255,.55);letter-spacing:.1em;text-transform:uppercase;margin:0 0 14px;">Aperçu des paroles</p>
         <div id="p-lyrics-preview"></div>
         <div style="height:32px;position:absolute;bottom:50px;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.25));pointer-events:none;"></div>
-        <button onclick="expandLyrics()" style="margin-top:16px;background:rgba(255,255,255,.15);border:none;border-radius:30px;padding:9px 20px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;backdrop-filter:blur(10px);">Afficher les paroles</button>
+        <button id="expand-lyrics-btn" onclick="expandLyrics()" style="margin-top:16px;background:rgba(255,255,255,.15);border:none;border-radius:30px;padding:9px 20px;color:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;backdrop-filter:blur(10px);">Afficher les paroles</button>
       </div>
     </div>
 
@@ -1446,13 +1446,17 @@ function loadLyricsForTrack(){
       ).join('');
       if(lyricsCard) lyricsCard.style.display='block';
     } else {
-      el.innerHTML='<div class="lyrics-empty">Aucune parole.<br>Appuie sur <b>Modifier</b> pour en ajouter.</div>';
-      if(lyricsCard) lyricsCard.style.display='none';
+      el.innerHTML='';
+      if(lyricsCard) lyricsCard.style.display='block';
+      // Affiche le bouton d'ajout dans la preview
+      if(previewEl) previewEl.innerHTML='<div style="padding:4px 0 8px;"><p style="font-size:15px;color:rgba(255,255,255,.55);margin:0 0 14px;line-height:1.5;">Pas encore de paroles<br>pour ce titre.</p><button onclick="openLyricsEditor()" style="background:rgba(255,255,255,.2);border:none;border-radius:30px;padding:10px 22px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;backdrop-filter:blur(10px);display:inline-flex;align-items:center;gap:8px;"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"white\"><path d=\"M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z\"/></svg>Ajouter les paroles</button></div>';
     }
     return;
   }
   el.innerHTML=lrcLines.map((l,i)=>`<div class="lrc-line" id="lrc-${i}" onclick="aud.currentTime=${l.time}">${esc(l.text)}</div>`).join('');
   if(lyricsCard) lyricsCard.style.display='block';
+  var expandBtn=document.getElementById('expand-lyrics-btn');
+  if(expandBtn) expandBtn.style.display=lrcLines.length?'inline-block':'none';
   buildLyricsPreview();
   // Refresh page paroles si ouverte
   var lyricsScreen=document.getElementById('s-lyrics');var dest=document.getElementById('lyrics-page-lines');if(lyricsScreen&&!lyricsScreen.classList.contains('hidden')&&dest){dest.innerHTML=el.innerHTML;}
@@ -2544,7 +2548,17 @@ function applyPlayerColor(rgb){
   if(lyricsCardInner) lyricsCardInner.style.background = 'rgb('+mr+','+mg+','+mb+')';
   if(lyricsFullInner) lyricsFullInner.style.background = 'rgb('+mr+','+mg+','+mb+')';
   // Couleur vive pleine pour la page paroles (couleur dominante boostée)
-  var vr=Math.min(255,r*1.1|0), vg=Math.min(255,g*1.1|0), vb=Math.min(255,b*1.1|0);
+  // Couleur vive mais forcée sombre (max luminosité 55%) pour lisibilité des paroles
+  var vr=r,vg=g,vb=b;
+  var lumRaw=(0.299*vr+0.587*vg+0.114*vb)/255;
+  if(lumRaw>0.45){
+    // Trop clair : on assombrit en multipliant par un facteur pour ramener lum à 0.38
+    var factor=0.38/lumRaw*0.85;
+    vr=Math.min(255,vr*factor|0);vg=Math.min(255,vg*factor|0);vb=Math.min(255,vb*factor|0);
+  } else {
+    // Déjà sombre : léger boost de saturation
+    vr=Math.min(255,r*0.9|0);vg=Math.min(255,g*0.9|0);vb=Math.min(255,b*0.9|0);
+  }
   window._lyricsPageBg = 'rgb('+vr+','+vg+','+vb+')';
   if(lyricsScreen) lyricsScreen.style.background = window._lyricsPageBg;
   // Adapte les couleurs de texte selon la luminosite
