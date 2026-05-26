@@ -76,9 +76,9 @@
     ::-webkit-scrollbar{display:none;}
     button{font-family:inherit;cursor:pointer;}
 
-    .screen{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--bg);transition:transform .36s cubic-bezier(.4,0,.2,1),opacity .36s,visibility 0s .36s;will-change:transform;}
-    .screen.hidden{transform:translateX(100%);pointer-events:none;visibility:hidden;}
-    .screen.slide-left{transform:translateX(-28%);opacity:.45;pointer-events:none;visibility:visible;}
+    .screen{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:var(--bg);transition:transform .32s cubic-bezier(.4,0,.2,1),opacity .32s;will-change:transform;}
+    .screen.hidden{display:none;pointer-events:none;}
+    .screen.slide-left{transform:translateX(-28%);opacity:.45;pointer-events:none;}
 
     /* HOME */
     #s-home{padding-top:calc(var(--safe-t)+10px);}
@@ -325,9 +325,12 @@
     .eq-val{font-size:10px;color:var(--sub);min-width:24px;text-align:center;}
     .eq-preset{padding:7px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:20px;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s,border-color .15s;}
     .eq-preset.active{background:rgba(45,126,248,.2);border-color:var(--acc);color:var(--acc);}
-    .lrc-line{font-size:24px;font-weight:700;color:rgba(255,255,255,.3);line-height:1.4;padding:8px 0;transition:color .12s ease,opacity .12s ease;cursor:pointer;}
-    .lrc-line.active{color:#fff;opacity:1;font-weight:800;}
-    .lrc-line.past{color:rgba(255,255,255,.25);opacity:1;}
+    .lrc-line{font-size:24px;font-weight:700;color:rgba(255,255,255,.28);line-height:1.45;padding:10px 0;transition:color .25s ease,opacity .25s ease,transform .25s ease,font-size .25s ease;cursor:pointer;transform-origin:left center;}
+    .lrc-line.active{color:#fff;opacity:1;font-weight:800;font-size:28px;transform:scale(1.04);}
+    .lrc-line.past{color:rgba(255,255,255,.22);opacity:1;}
+    .lrc-line.plain{color:rgba(255,255,255,.75);font-size:20px;font-weight:600;cursor:default;padding:7px 0;line-height:1.6;}
+    /* padding haut/bas pour centrer la 1ère et dernière ligne */
+    #lyrics-lines{padding:35vh 0;}
     .lyrics-empty{text-align:center;padding:24px 0;color:var(--sub);font-size:14px;line-height:1.7;}
     /* Lyrics editor modal */
     .lrc-editor-wrap{padding:0 18px 18px;}
@@ -1407,12 +1410,12 @@ function loadLyricsForTrack(){
   var lyricsCard=document.getElementById('p-lyrics-card');
   if(!lrcLines.length){
     if(t&&t.lrc&&t.lrc.trim().length>5){
-      // Paroles plain sans timestamps — affichage statique dans les deux zones
+      // Paroles plain sans timestamps — affichage statique complet
       var plainLines=t.lrc.trim().split('\n');
       el.innerHTML=plainLines.map(line=>
-        `<div class="lrc-line" style="opacity:0.85;cursor:default;">${esc(line)||'&nbsp;'}</div>`
+        `<div class="lrc-line plain">${esc(line)||'<br>'}</div>`
       ).join('');
-      // Aussi dans l'aperçu
+      // Aperçu
       if(previewEl) previewEl.innerHTML=plainLines.slice(0,4).map(line=>
         '<p class="lp-line near">'+esc(line||'')+'</p>'
       ).join('');
@@ -1445,15 +1448,13 @@ function updateLyricsSync(ct){
   });
   // Update preview card
   renderLyricsPreview();
-  // Auto-scroll dans la vue paroles complètes si ouverte
+  // Auto-scroll centré sur la ligne active
   var fullCard = document.getElementById('p-lyrics-full-card');
   if(newIdx>=0 && fullCard && fullCard.style.display!=='none'){
     var activeLine=document.getElementById('lrc-'+newIdx);
-    var lyricsScroll=document.querySelector('.p-lyrics-full-card .lyrics-scroll');
+    var lyricsScroll=document.getElementById('lyrics-scroll');
     if(activeLine&&lyricsScroll){
-      var lineRect = activeLine.getBoundingClientRect();
-      var scrollRect = lyricsScroll.getBoundingClientRect();
-      var target = lyricsScroll.scrollTop + (lineRect.top - scrollRect.top) - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
+      var target = activeLine.offsetTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
       lyricsScroll.scrollTo({top: Math.max(0, target), behavior: 'smooth'});
     }
   }
@@ -1719,8 +1720,10 @@ function switchHomeTab(tab){activeHomeTab=tab;['overview','tracks','albums'].for
 const SCREENS={home:'s-home',playlists:'s-playlists',artists:'s-artists',import:'s-import',pldetail:'s-pldetail',albumdetail:'s-albumdetail',artistdetail:'s-artistdetail',player:'s-player',storage:'s-storage','cached-tracks':'s-cached-tracks',discover:'s-discover'};
 
 var activeScreen='home';
-function showScreen(name,fromLeft){fromLeft=fromLeft||false;var prev=document.getElementById(SCREENS[activeScreen]);var next=document.getElementById(SCREENS[name]);if(!next||prev===next) return;// Cache TOUTES les screens sauf la nouvelle (évite l'empilement de slide-left)
-Object.keys(SCREENS).forEach(function(n){if(n===name) return;var el=document.getElementById(SCREENS[n]);if(!el) return;if(el===prev&&!fromLeft){el.classList.remove('hidden');el.classList.add('slide-left');setTimeout(function(){el.classList.remove('slide-left');el.classList.add('hidden');},370);}else{el.classList.remove('slide-left');el.classList.add('hidden');}});next.classList.remove('hidden','slide-left');next.style.visibility='visible';activeScreen=name;if(name!=='player'){['home','playlists','artists','import','storage','cached-tracks','discover'].forEach(function(n){var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});}}
+function showScreen(name,fromLeft){fromLeft=fromLeft||false;var prev=document.getElementById(SCREENS[activeScreen]);var next=document.getElementById(SCREENS[name]);if(!next||prev===next) return;
+Object.keys(SCREENS).forEach(function(n){if(n===name) return;var el=document.getElementById(SCREENS[n]);if(!el||el===prev) return;el.classList.remove('slide-left');el.classList.add('hidden');});
+if(prev){if(!fromLeft){prev.classList.remove('hidden');prev.classList.add('slide-left');setTimeout(function(){prev.classList.remove('slide-left');prev.classList.add('hidden');},340);}else{prev.classList.remove('slide-left');prev.classList.add('hidden');}}
+next.classList.remove('hidden','slide-left');activeScreen=name;if(name!=='player'){['home','playlists','artists','import','storage','cached-tracks','discover'].forEach(function(n){var item=document.getElementById('nav-'+n);if(!item) return;item.classList.toggle('active',n===name);});}}
 
 /* FIX 3: hide mini-player when entering player screen, show on close */
 function openPlayer(){
@@ -2636,7 +2639,7 @@ function expandLyrics(){
   renderLrcLines();
   // Attacher le listener user-scroll (une seule fois)
   requestAnimationFrame(function(){
-    var lyricsScroll = document.querySelector('.p-lyrics-full-card .lyrics-scroll');
+    var lyricsScroll = document.getElementById('lyrics-scroll');
     if(lyricsScroll && !lyricsScroll._scrollListenerAttached){
       lyricsScroll._scrollListenerAttached = true;
       lyricsScroll._userScrolling = false;
@@ -2657,7 +2660,7 @@ function expandLyrics(){
   requestAnimationFrame(function(){
     var activeIdx = lrcActiveIdx >= 0 ? lrcActiveIdx : 0;
     var activeLine = document.getElementById('lrc-'+activeIdx);
-    var lyricsScroll = document.querySelector('.p-lyrics-full-card .lyrics-scroll');
+    var lyricsScroll = document.getElementById('lyrics-scroll');
     if(activeLine && lyricsScroll){
       var target = activeLine.offsetTop - (lyricsScroll.clientHeight/2) + (activeLine.offsetHeight/2);
       lyricsScroll.scrollTop = Math.max(0, target);
