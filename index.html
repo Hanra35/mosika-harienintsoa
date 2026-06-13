@@ -337,6 +337,19 @@
     /* padding haut/bas pour centrer la 1ère et dernière ligne */
     #lyrics-lines{padding:40px 0 40px;}
     .lyrics-empty{text-align:center;padding:24px 0;color:var(--sub);font-size:14px;line-height:1.7;}
+    /* ── ONGLETS PAROLES / TRADUCTION ── */
+    .lp-tabs{display:flex;gap:8px;padding:0 20px 10px;flex-shrink:0;}
+    .lp-tab{flex:1;padding:8px 0;border:none;border-radius:20px;font-size:12px;font-weight:700;font-family:inherit;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.1);color:rgba(255,255,255,.5);}
+    .lp-tab.active{background:rgba(255,255,255,.22);color:#fff;box-shadow:0 2px 12px rgba(0,0,0,.3);}
+    /* Sélecteur de langue */
+    .lp-lang-bar{display:flex;align-items:center;gap:8px;padding:0 20px 12px;flex-shrink:0;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+    .lp-lang-bar::-webkit-scrollbar{display:none;}
+    .lp-lang-btn{padding:5px 14px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;transition:all .2s;flex-shrink:0;}
+    .lp-lang-btn.active{background:var(--acc);border-color:var(--acc);color:#fff;}
+    /* État traduction */
+    .lp-trans-loading{text-align:center;padding:40px 20px;color:rgba(255,255,255,.5);font-size:14px;line-height:2;}
+    .lp-trans-loading .spin{display:inline-block;width:28px;height:28px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--acc);border-radius:50%;animation:lp-spin .7s linear infinite;margin-bottom:12px;}
+    @keyframes lp-spin{to{transform:rotate(360deg);}}
     /* Lyrics editor modal */
     .lrc-editor-wrap{padding:0 18px 18px;}
     .lrc-textarea{width:100%;min-height:220px;background:var(--card2);border:1px solid var(--border);border-radius:14px;color:var(--text);font-size:12px;font-family:monospace;padding:12px;resize:vertical;outline:none;line-height:1.7;box-sizing:border-box;}
@@ -948,9 +961,28 @@
     </div>
     <button onclick="openLyricsEditor()" style="background:rgba(0,0,0,.22);border:none;border-radius:20px;padding:7px 14px;color:rgba(255,255,255,.8);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;flex-shrink:0;backdrop-filter:blur(8px);">✏️</button>
   </div>
-  <!-- Scroll des paroles -->
+  <!-- Onglets Paroles / Traduction -->
+  <div class="lp-tabs">
+    <button class="lp-tab active" id="lp-tab-lyrics" onclick="switchLyricsTab('lyrics')">🎵 Paroles</button>
+    <button class="lp-tab" id="lp-tab-translation" onclick="switchLyricsTab('translation')">🌐 Traduction</button>
+  </div>
+  <!-- Barre de langue (visible seulement onglet traduction) -->
+  <div class="lp-lang-bar" id="lp-lang-bar" style="display:none;">
+    <button class="lp-lang-btn active" data-lang="fr" onclick="selectTranslationLang('fr','Français')">🇫🇷 Français</button>
+    <button class="lp-lang-btn" data-lang="mg" onclick="selectTranslationLang('mg','Malagasy')">🇲🇬 Malagasy</button>
+    <button class="lp-lang-btn" data-lang="en" onclick="selectTranslationLang('en','English')">🇬🇧 English</button>
+    <button class="lp-lang-btn" data-lang="es" onclick="selectTranslationLang('es','Español')">🇪🇸 Español</button>
+    <button class="lp-lang-btn" data-lang="pt" onclick="selectTranslationLang('pt','Português')">🇵🇹 Português</button>
+    <button class="lp-lang-btn" data-lang="ar" onclick="selectTranslationLang('ar','العربية')">🇸🇦 العربية</button>
+    <button class="lp-lang-btn" data-lang="zh" onclick="selectTranslationLang('zh','中文')">🇨🇳 中文</button>
+  </div>
+  <!-- Scroll des paroles originales -->
   <div class="lyrics-page-scroll" id="lyrics-page-scroll">
     <div class="lyrics-page-lines" id="lyrics-page-lines"></div>
+  </div>
+  <!-- Scroll traduction (caché par défaut) -->
+  <div class="lyrics-page-scroll" id="trans-page-scroll" style="display:none;">
+    <div class="lyrics-page-lines" id="trans-page-lines"></div>
   </div>
 </div>
 
@@ -2914,6 +2946,190 @@ updateLyricsSync = function(ct) {
   // Si réellement en pause (pas juste isPlaying=false), ne pas mettre à jour
   if (aud.paused && !isPlaying) return;
   _origUpdateLyricsSync(ct);
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  TRADUCTION SYNCHRONISÉE DES PAROLES
+// ══════════════════════════════════════════════════════════════════════════════
+var _transTab = 'lyrics';          // onglet actif : 'lyrics' | 'translation'
+var _transLang = 'fr';             // langue cible sélectionnée
+var _transLangName = 'Français';
+var _transCache = {};              // cache : { "trackId_lang": [{time, text}, ...] }
+var _transLoading = false;
+
+function switchLyricsTab(tab) {
+  _transTab = tab;
+  var btnLyrics = document.getElementById('lp-tab-lyrics');
+  var btnTrans  = document.getElementById('lp-tab-translation');
+  var scrollLyrics = document.getElementById('lyrics-page-scroll');
+  var scrollTrans  = document.getElementById('trans-page-scroll');
+  var langBar  = document.getElementById('lp-lang-bar');
+
+  if (tab === 'lyrics') {
+    btnLyrics.classList.add('active');
+    btnTrans.classList.remove('active');
+    scrollLyrics.style.display = '';
+    scrollTrans.style.display  = 'none';
+    langBar.style.display = 'none';
+  } else {
+    btnTrans.classList.add('active');
+    btnLyrics.classList.remove('active');
+    scrollLyrics.style.display = 'none';
+    scrollTrans.style.display  = '';
+    langBar.style.display = 'flex';
+    loadTranslation();
+  }
+}
+
+function selectTranslationLang(lang, name) {
+  _transLang = lang;
+  _transLangName = name;
+  // Mettre à jour les boutons
+  document.querySelectorAll('.lp-lang-btn').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+  loadTranslation();
+}
+
+function _transCacheKey() {
+  var t = cur !== null ? tracks[cur] : null;
+  return t ? (t.id + '_' + _transLang) : null;
+}
+
+async function loadTranslation() {
+  if (_transLoading) return;
+  var key = _transCacheKey();
+  if (!key) return;
+
+  var dest = document.getElementById('trans-page-lines');
+  if (!dest) return;
+
+  // Déjà en cache → afficher directement
+  if (_transCache[key]) {
+    renderTransLines(_transCache[key]);
+    syncTransScroll(lrcActiveIdx);
+    return;
+  }
+
+  // Pas de paroles → message
+  if (!lrcLines.length) {
+    dest.innerHTML = '<div class="lp-trans-loading">Pas de paroles à traduire pour ce titre.</div>';
+    return;
+  }
+
+  // Afficher le loader
+  _transLoading = true;
+  dest.innerHTML = '<div class="lp-trans-loading"><div class="spin"></div><br>Traduction en ' + _transLangName + '…</div>';
+
+  try {
+    // Construire le prompt : envoyer toutes les lignes numérotées
+    var linesText = lrcLines.map(function(l, i) { return (i+1) + '. ' + l.text; }).join('\n');
+    var prompt = 'Traduis ces paroles de chanson en ' + _transLangName + '.\n'
+      + 'RÈGLES STRICTES :\n'
+      + '- Réponds UNIQUEMENT avec les lignes traduites numérotées, exactement le même nombre de lignes\n'
+      + '- Format : "1. traduction" puis "2. traduction" etc.\n'
+      + '- Ne change pas les numéros, ne saute aucune ligne, ne rajoute rien d\'autre\n'
+      + '- Garde le sens poétique et lyrique\n\n'
+      + 'Paroles :\n' + linesText;
+
+    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await resp.json();
+    var raw = (data.content && data.content[0] && data.content[0].text) || '';
+
+    // Parser les lignes traduites "N. texte"
+    var translated = [];
+    raw.split('\n').forEach(function(line) {
+      var m = line.match(/^(\d+)\.\s+(.+)/);
+      if (m) {
+        var idx = parseInt(m[1]) - 1;
+        if (idx >= 0 && idx < lrcLines.length) {
+          translated[idx] = m[2].trim();
+        }
+      }
+    });
+
+    // Construire le tableau final avec les temps originaux
+    var transLines = lrcLines.map(function(l, i) {
+      return { time: l.time, text: translated[i] || l.text };
+    });
+
+    _transCache[key] = transLines;
+    renderTransLines(transLines);
+    syncTransScroll(lrcActiveIdx);
+
+  } catch(e) {
+    dest.innerHTML = '<div class="lp-trans-loading">Erreur lors de la traduction.<br><small>' + e.message + '</small></div>';
+  } finally {
+    _transLoading = false;
+  }
+}
+
+function renderTransLines(transLines) {
+  var dest = document.getElementById('trans-page-lines');
+  if (!dest) return;
+  dest.innerHTML = transLines.map(function(l, i) {
+    return '<div class="lrc-line" id="tlrc-' + i + '" onclick="aud.currentTime=' + l.time + '">' + esc(l.text) + '</div>';
+  }).join('');
+  // Appliquer les classes active/past selon position actuelle
+  transLines.forEach(function(_, i) {
+    var el = document.getElementById('tlrc-' + i);
+    if (!el) return;
+    el.classList.toggle('active', i === lrcActiveIdx);
+    el.classList.toggle('past', i < lrcActiveIdx);
+  });
+}
+
+function syncTransScroll(newIdx) {
+  if (_transTab !== 'translation') return;
+  var dest = document.getElementById('trans-page-lines');
+  if (!dest) return;
+  // Mettre à jour active/past
+  var key = _transCacheKey();
+  if (!key || !_transCache[key]) return;
+  _transCache[key].forEach(function(_, i) {
+    var el = document.getElementById('tlrc-' + i);
+    if (!el) return;
+    el.classList.toggle('active', i === newIdx);
+    el.classList.toggle('past', i < newIdx);
+  });
+  // Auto-scroll vers la ligne active
+  if (newIdx >= 0) {
+    var activeLine = document.getElementById('tlrc-' + newIdx);
+    var scroll = document.getElementById('trans-page-scroll');
+    if (activeLine && scroll) {
+      var target = activeLine.offsetTop - (scroll.clientHeight / 2) + (activeLine.offsetHeight / 2);
+      scroll.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+    }
+  }
+}
+
+// Vider le cache traduction quand on change de chanson
+var _origLoadLyricsForTrack = loadLyricsForTrack;
+loadLyricsForTrack = function() {
+  _origLoadLyricsForTrack();
+  // Vider l'affichage traduction pour la nouvelle chanson
+  var dest = document.getElementById('trans-page-lines');
+  if (dest) dest.innerHTML = '';
+  _transLoading = false;
+  // Si l'onglet traduction est actif, recharger
+  if (_transTab === 'translation') {
+    loadTranslation();
+  }
+};
+
+// Brancher la sync traduction sur updateLyricsSync
+var _origUpdateLyricsSyncTrans = updateLyricsSync;
+updateLyricsSync = function(ct) {
+  _origUpdateLyricsSyncTrans(ct);
+  syncTransScroll(lrcActiveIdx);
 };
 
 // ── 5. SERVICE WORKER : audio persistant en arrière-plan (PWA) ───────────────
