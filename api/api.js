@@ -258,6 +258,45 @@ module.exports = async (req, res) => {
       return;
     }
 
+    // ── ACTION TRANSLATE ──────────────────────────────────────────────────────
+    // Proxy vers l'API Anthropic pour la traduction des paroles (évite le CORS)
+    if (action === 'translate') {
+      const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+      if (!ANTHROPIC_KEY) {
+        res.status(500).json({ error: 'ANTHROPIC_API_KEY non configurée sur le serveur' });
+        return;
+      }
+      const { prompt, max_tokens, web_search } = req.body || {};
+      if (!prompt) {
+        res.status(400).json({ error: 'Paramètre prompt manquant' });
+        return;
+      }
+      const aiBody = {
+        model: 'claude-sonnet-4-6',
+        max_tokens: max_tokens || 1000,
+        messages: [{ role: 'user', content: prompt }],
+      };
+      if (web_search) {
+        aiBody.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+      }
+      const aiResp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify(aiBody),
+      });
+      const aiData = await aiResp.json();
+      if (!aiResp.ok) {
+        res.status(aiResp.status).json({ error: aiData.error?.message || 'Erreur Anthropic' });
+        return;
+      }
+      res.status(200).json({ content: aiData.content });
+      return;
+    }
+
     res.status(404).json({ error: 'Action inconnue' });
   } catch (e) {
     console.error('api error:', e.message);
@@ -273,8 +312,3 @@ module.exports.config = {
     },
   },
 };
-
-
-
-
-
