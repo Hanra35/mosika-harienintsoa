@@ -3020,40 +3020,41 @@ async function loadTranslation() {
   dest.innerHTML = '<div class="lp-trans-loading"><div class="spin"></div><br>Traduction en ' + _transLangName + '…</div>';
 
   try {
-    // Construire le prompt : envoyer toutes les lignes numérotées
-    var linesText = lrcLines.map(function(l, i) { return (i+1) + '. ' + l.text; }).join('\n');
-    var prompt = 'Traduis ces paroles de chanson en ' + _transLangName + '.\n'
-      + 'RÈGLES STRICTES :\n'
-      + '- Réponds UNIQUEMENT avec les lignes traduites numérotées, exactement le même nombre de lignes\n'
-      + '- Format : "1. traduction" puis "2. traduction" etc.\n'
-      + '- Ne change pas les numéros, ne saute aucune ligne, ne rajoute rien d\'autre\n'
-      + '- Garde le sens poétique et lyrique\n\n'
-      + 'Paroles :\n' + linesText;
+    // Détecter la langue source automatiquement (langpair=auto|cible)
+    var targetLang = _transLang;
+    var langpair = 'auto|' + targetLang;
 
-    var resp = await fetch(API + '?action=translate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: prompt })
+    // Dédupliquer les lignes identiques pour éviter les requêtes inutiles
+    var uniqueTexts = {};
+    lrcLines.forEach(function(l) {
+      var t = l.text.trim();
+      if (t) uniqueTexts[t] = null;
     });
-    var data = await resp.json();
-    if (!resp.ok) throw new Error(data.error || 'Erreur serveur (' + resp.status + ')');
-    var raw = (data.content && data.content[0] && data.content[0].text) || '';
+    var textsToTranslate = Object.keys(uniqueTexts);
 
-    // Parser les lignes traduites "N. texte"
-    var translated = [];
-    raw.split('\n').forEach(function(line) {
-      var m = line.match(/^(\d+)\.\s+(.+)/);
-      if (m) {
-        var idx = parseInt(m[1]) - 1;
-        if (idx >= 0 && idx < lrcLines.length) {
-          translated[idx] = m[2].trim();
-        }
-      }
-    });
+    // Traduire toutes les lignes uniques en parallèle via MyMemory (gratuite, sans clé)
+    var results = await Promise.all(textsToTranslate.map(function(text) {
+      var url = 'https://api.mymemory.translated.net/get?q='
+        + encodeURIComponent(text)
+        + '&langpair=' + encodeURIComponent(langpair);
+      return fetch(url)
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var trans = (d.responseData && d.responseData.translatedText) || text;
+          // MyMemory retourne parfois le texte original si non traduit
+          return { original: text, translated: trans };
+        })
+        .catch(function() { return { original: text, translated: text }; });
+    }));
+
+    // Construire un dictionnaire texte → traduction
+    var dict = {};
+    results.forEach(function(r) { dict[r.original] = r.translated; });
 
     // Construire le tableau final avec les temps originaux
-    var transLines = lrcLines.map(function(l, i) {
-      return { time: l.time, text: translated[i] || l.text };
+    var transLines = lrcLines.map(function(l) {
+      var t = l.text.trim();
+      return { time: l.time, text: (t && dict[t]) ? dict[t] : l.text };
     });
 
     _transCache[key] = transLines;
