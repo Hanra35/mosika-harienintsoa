@@ -1673,14 +1673,12 @@ async function generateLrcWithAI(trackName, artistName, plainLyrics){
       +'Format : [mm:ss.xx] texte de la ligne\n'
       +'RÉPONDS UNIQUEMENT avec le LRC brut. Commence par [00:';
   }
-  var body={model:'claude-sonnet-4-20250514',max_tokens:2000,messages:[{role:'user',content:prompt}]};
-  if(!plainLyrics) body.tools=[{type:'web_search_20250305',name:'web_search'}];
-  var res=await fetch('https://api.anthropic.com/v1/messages',{
+  var resp2=await fetch(API+'?action=translate',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify(body)
+    body:JSON.stringify({prompt:prompt,max_tokens:2000,web_search:!plainLyrics})
   });
-  if(!res.ok) throw new Error('API IA erreur '+res.status);
-  var data=await res.json();
+  if(!resp2.ok) throw new Error('API IA erreur '+resp2.status);
+  var data=await resp2.json();
   var text='';
   (data.content||[]).forEach(function(b){if(b.type==='text') text+=b.text;});
   // Extrait uniquement les lignes LRC valides
@@ -3032,16 +3030,13 @@ async function loadTranslation() {
       + '- Garde le sens poétique et lyrique\n\n'
       + 'Paroles :\n' + linesText;
 
-    var resp = await fetch('https://api.anthropic.com/v1/messages', {
+    var resp = await fetch(API + '?action=translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
+      body: JSON.stringify({ prompt: prompt })
     });
     var data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Erreur serveur (' + resp.status + ')');
     var raw = (data.content && data.content[0] && data.content[0].text) || '';
 
     // Parser les lignes traduites "N. texte"
