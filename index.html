@@ -3020,41 +3020,92 @@ async function loadTranslation() {
   dest.innerHTML = '<div class="lp-trans-loading"><div class="spin"></div><br>Traduction en ' + _transLangName + '…</div>';
 
   try {
-    // Détecter la langue source automatiquement (langpair=auto|cible)
     var targetLang = _transLang;
-    var langpair = 'auto|' + targetLang;
 
-    // Dédupliquer les lignes identiques pour éviter les requêtes inutiles
-    var uniqueTexts = {};
+    // ── Détection de langue par ligne (unicode + MyMemory) ───────────────
+
+    // Détection rapide par bloc unicode (sans requête réseau)
+    function detectScriptLang(text) {
+      var t = text.trim();
+      if (!t) return null;
+      if (/[가-힯ᄀ-ᇿ㄰-㆏]/.test(t)) return 'ko'; // Coréen
+      if (/[぀-ヿ]/.test(t)) return 'ja';                            // Japonais
+      if (/[一-鿿]/.test(t)) return 'zh';                            // Chinois
+      if (/[؀-ۿ]/.test(t)) return 'ar';                            // Arabe
+      if (/[฀-๿]/.test(t)) return 'th';                            // Thaï
+      if (/[Ѐ-ӿ]/.test(t)) return 'ru';                            // Cyrillique
+      if (/[ऀ-ॿ]/.test(t)) return 'hi';                            // Devanagari
+      return null; // latin → besoin de détection MyMemory
+    }
+
+    // Collecter les textes latins uniques à détecter via MyMemory
+    var latinTexts = {};
     lrcLines.forEach(function(l) {
       var t = l.text.trim();
-      if (t) uniqueTexts[t] = null;
+      if (t && !detectScriptLang(t)) latinTexts[t] = null;
     });
-    var textsToTranslate = Object.keys(uniqueTexts);
+    var latinKeys = Object.keys(latinTexts);
 
-    // Traduire toutes les lignes uniques en parallèle via MyMemory (gratuite, sans clé)
-    var results = await Promise.all(textsToTranslate.map(function(text) {
+    // Détection MyMemory en parallèle pour les textes latins
+    if (latinKeys.length) {
+      var detectResults = await Promise.all(latinKeys.map(function(text) {
+        return fetch(
+          'https://api.mymemory.translated.net/get?q='
+          + encodeURIComponent(text.slice(0, 100))
+          + '&langpair=en|fr'
+        )
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+          var det = d.responseData && d.responseData.detectedLanguage;
+          var lang = (det && /^[a-z]{2}/i.test(det))
+            ? det.toLowerCase().split('-')[0] : 'en';
+          return { text: text, lang: lang };
+        })
+        .catch(function() { return { text: text, lang: 'en' }; });
+      }));
+      detectResults.forEach(function(r) { latinTexts[r.text] = r.lang; });
+    }
+
+    function getLang(text) {
+      var t = text.trim();
+      return detectScriptLang(t) || latinTexts[t] || 'en';
+    }
+
+    // ── Dédupliquer par (texte + langue source) ───────────────────────
+    var uniquePairs = {}; // clé : "srcLang|||text"
+    lrcLines.forEach(function(l) {
+      var t = l.text.trim();
+      if (!t) return;
+      var src = getLang(t);
+      if (src === targetLang) return; // déjà dans la langue cible, pas besoin de traduire
+      uniquePairs[src + '|||' + t] = { text: t, src: src };
+    });
+
+    // ── Traduire toutes les paires uniques en parallèle ─────────────────
+    var translationMap = {};
+    await Promise.all(Object.keys(uniquePairs).map(function(k) {
+      var pair = uniquePairs[k];
       var url = 'https://api.mymemory.translated.net/get?q='
-        + encodeURIComponent(text)
-        + '&langpair=' + encodeURIComponent(langpair);
+        + encodeURIComponent(pair.text)
+        + '&langpair=' + encodeURIComponent(pair.src + '|' + targetLang);
       return fetch(url)
         .then(function(r) { return r.json(); })
         .then(function(d) {
-          var trans = (d.responseData && d.responseData.translatedText) || text;
-          // MyMemory retourne parfois le texte original si non traduit
-          return { original: text, translated: trans };
+          var trans = (d.responseData && d.responseData.translatedText) || pair.text;
+          // Ignorer les messages d'erreur MyMemory (tout en majuscules, >30 chars)
+          if (trans === trans.toUpperCase() && trans.length > 30) trans = pair.text;
+          translationMap[k] = trans;
         })
-        .catch(function() { return { original: text, translated: text }; });
+        .catch(function() { translationMap[k] = pair.text; });
     }));
 
-    // Construire un dictionnaire texte → traduction
-    var dict = {};
-    results.forEach(function(r) { dict[r.original] = r.translated; });
-
-    // Construire le tableau final avec les temps originaux
+    // ── Construire le tableau final avec les temps originaux ────────────────
     var transLines = lrcLines.map(function(l) {
       var t = l.text.trim();
-      return { time: l.time, text: (t && dict[t]) ? dict[t] : l.text };
+      if (!t) return { time: l.time, text: l.text };
+      var src = getLang(t);
+      var k = src + '|||' + t;
+      return { time: l.time, text: translationMap[k] || l.text };
     });
 
     _transCache[key] = transLines;
