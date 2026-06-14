@@ -348,6 +348,7 @@
     .lp-lang-btn.active{background:var(--acc);border-color:var(--acc);color:#fff;}
     /* État traduction */
     .lp-trans-loading{text-align:center;padding:40px 20px;color:rgba(255,255,255,.5);font-size:14px;line-height:2;}
+    .lrc-trans-original{font-size:11px;color:rgba(255,255,255,.35);font-style:italic;margin-top:2px;line-height:1.4;}
     .lp-trans-loading .spin{display:inline-block;width:28px;height:28px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--acc);border-radius:50%;animation:lp-spin .7s linear infinite;margin-bottom:12px;}
     @keyframes lp-spin{to{transform:rotate(360deg);}}
     /* Lyrics editor modal */
@@ -3102,10 +3103,13 @@ async function loadTranslation() {
     // ── Construire le tableau final avec les temps originaux ────────────────
     var transLines = lrcLines.map(function(l) {
       var t = l.text.trim();
-      if (!t) return { time: l.time, text: l.text };
+      if (!t) return { time: l.time, text: l.text, original: l.text };
       var src = getLang(t);
       var k = src + '|||' + t;
-      return { time: l.time, text: translationMap[k] || l.text };
+      var translated = translationMap[k] || l.text;
+      // Garder l'original seulement si la traduction est différente
+      var orig = (translated !== l.text) ? l.text : '';
+      return { time: l.time, text: translated, original: orig };
     });
 
     _transCache[key] = transLines;
@@ -3123,7 +3127,11 @@ function renderTransLines(transLines) {
   var dest = document.getElementById('trans-page-lines');
   if (!dest) return;
   dest.innerHTML = transLines.map(function(l, i) {
-    return '<div class="lrc-line" id="tlrc-' + i + '" onclick="aud.currentTime=' + l.time + '">' + esc(l.text) + '</div>';
+    var orig = (l.original && l.original !== l.text)
+      ? '<div class="lrc-trans-original">(' + esc(l.original) + ')</div>'
+      : '';
+    return '<div class="lrc-line" id="tlrc-' + i + '" onclick="aud.currentTime=' + l.time + '">'
+      + esc(l.text) + orig + '</div>';
   }).join('');
   // Appliquer les classes active/past selon position actuelle
   transLines.forEach(function(_, i) {
